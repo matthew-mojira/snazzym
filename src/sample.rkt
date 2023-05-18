@@ -1,3 +1,3 @@
 #lang snazzym
 
-(if 10 (return 10) (return #t))
+(if #t (return 10) (if #f (return 75) (return #t)))

@@ -1,6 +1,6 @@
 #lang racket
 
-(provide (all-defined-out))
+(provide compile)
 (require "ast.rkt"
          "65816.rkt")
 
@@ -27,7 +27,8 @@
 (define (compile-expr expr)
   (match expr
     [(Int i) (compile-int i)]
-    [(Bool b) (compile-bool b)]))
+    [(Bool b) (compile-bool b)]
+    ))
 
 (define (compile-int int)
   (Lda (Imm int)))
