@@ -1,0 +1,19 @@
+#lang snazzym
+
+(global 'int frame-count)
+
+(function 'int (foo ['int x] ['int y])
+  (if (> x y)
+      (return x)
+      (return y)))
+
+(function 'void (every-frame ())
+  (local 'int copy)
+  (set! copy frame-count)
+  (increment! frame-count))
+
+(main
+
+(initialize
+
+(
