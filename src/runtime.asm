@@ -66,16 +66,23 @@ F_RESET:
     LDA.B #$80
     STA.W NMITIMEN
 
-    REP   #$30  ; 16-bit AXY
+    REP   #$30    ; 16-bit AXY
 
-    JSL   main    ; CALL THE COMPILED CODE!!
+    JSL   init    ; COMPILED CODE: INITIALIZATION ROUTINES
 
-    STP
+-   JSL   main    ; COMPILED CODE: MAIN GAME LOOP
+    WAI
+    BRA -
 
 I_NMI:
-    PHA
-    LDA.W RDNMI  ; read for NMI acknowledge
+    PHP
+    PHA           ; is this a good order?
+    LDA.W RDNMI   ; read for NMI acknowledge
+
+    JSL   vblank  ; COMPILED CODE: VBLANK ROUTINE
+
     PLA
+    PLP
     RTI           ; ReTurn from Interrupt
 
 ; this should never run

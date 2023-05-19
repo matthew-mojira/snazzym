@@ -1,0 +1,22 @@
+#lang snazzym
+
+(func (f int ())
+      (if/else #t ; main check
+               ((return 10))
+               ((if/else #f ((return 75)) ((return 11))))))
+
+(func (g bool ()) (return #f))
+
+(func (main int ())
+      (f)
+      (g)
+      (if/else (g) ;bool func call
+               ((f) ; block stuff
+                (return 1)) ;end of block
+               ((if/else #t
+                         ((return (f))) ;proper output value
+                         ((return 25))))))
+
+(func (init int ()) (return 0))
+(func (vblank int ()) (return 0))
+
