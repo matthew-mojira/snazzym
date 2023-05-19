@@ -11,7 +11,7 @@
   (match prog
     [(Func id _ ss)
      (seq (Comment (~a id))
-          (Label (symbol->label id))
+          (Label (~a id))
           (flatten (map compile-stat ss)))]))
 
 (define (compile-stat stat)
@@ -27,6 +27,7 @@
             (Label true)
             (compile-stat s1)
             (Brl endif)
+            (Label false)
             (compile-stat s2)
             (Label endif)))]
     [_ (error "not a statement")]))
@@ -42,15 +43,15 @@
 (define (compile-bool bool)
   (Lda (Imm (if bool 0 1))))
 
-(define (symbol->label s)
-  (string-append "func_"
-                 (list->string (map (λ (c)
-                                      (if (or (char<=? #\a c #\z)
-                                              (char<=? #\A c #\Z)
-                                              (char<=? #\0 c #\9)
-                                              (memq c '(#\_)))
-                                          c
-                                          #\_))
-                                    (string->list (symbol->string s))))
-                 "_"
-                 (number->string (eq-hash-code s) 16)))
+;(define (symbol->label s)
+;  (string-append "func_"
+;                 (list->string (map (λ (c)
+;                                      (if (or (char<=? #\a c #\z)
+;                                              (char<=? #\A c #\Z)
+;                                              (char<=? #\0 c #\9)
+;                                              (memq c '(#\_)))
+;                                          c
+;                                          #\_))
+;                                    (string->list (symbol->string s))))
+;                 "_"
+;                 (number->string (eq-hash-code s) 16)))
