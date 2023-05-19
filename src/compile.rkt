@@ -9,10 +9,8 @@
 
 (define (compile-top-level prog)
   (match prog
-    [(Func id _ ss)
-     (seq (Comment (~a id))
-          (Label (~a id))
-          (flatten (map compile-stat ss)))]))
+    [(Func id _ as ss) ; args not handled
+     (seq (Comment (~a id)) (Label (~a id)) (flatten (map compile-stat ss)))]))
 
 (define (compile-stat stat)
   (match stat
@@ -30,12 +28,14 @@
             (Label false)
             (compile-stat s2)
             (Label endif)))]
+    [(Call id as) (Jsl (~a id))] ; args unimplemented
     [_ (error "not a statement")]))
 
 (define (compile-expr expr)
   (match expr
     [(Int i) (compile-int i)]
-    [(Bool b) (compile-bool b)]))
+    [(Bool b) (compile-bool b)]
+    [(Call id as) (Jsl (~a id))])) ; args unimplemented
 
 (define (compile-int int)
   (Lda (Imm int)))

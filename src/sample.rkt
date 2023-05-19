@@ -7,4 +7,7 @@
 
 (function (g bool ()) (return #f))
 
-(function (main int ()) (if #f (return 1) (if #t (return 3) (return 99))))
+(function (main int ())
+          (if (g) ;bool function call
+              (return 1)
+              (if #t (return (f)) (return 25))))
