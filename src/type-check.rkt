@@ -33,6 +33,7 @@
        (type-check-stat* s1 type funcs globs)
        (type-check-stat* s2 type funcs globs))]
     [(Call id es) (type-check-call id es funcs globs)]
+    [(Assign id e) (type-check-expr e (typeof-global id globs) funcs globs)]
     [_ #t]))
 
 (define (type-check-expr expr type funcs globs)
@@ -52,9 +53,7 @@
     [(Int _) 'int]
     [(Bool _) 'bool]
     [(Call id es) (match-let ([(Func _ t _ _) (lookup-func id funcs)]) t)]
-    [(Var id)
-     (match (lookup-global id globs)
-       [(Global _ t) t])])) ; need to adapt for many var types
+    [(Var id) (typeof-global id globs)]))
 
 (define (type-check-call id es funcs globs)
   (match-let ([(Func _ _ as ss) (lookup-func id funcs)])
@@ -63,8 +62,9 @@
           (type-check-expr e a funcs globs))
         (error "Arity mismatch"))))
 
-(define (lookup-global id globs)
-  (findf (match-lambda
-           [(Global idg t) (if (eq? id idg) t #f)]
-           [_ #f])
-         globs))
+(define (typeof-global id globs) ; need to adapt for many var types
+  (match (findf (match-lambda
+                  [(Global idg t) (if (eq? id idg) t #f)]
+                  [_ #f])
+                globs)
+    [(Global _ t) t]))

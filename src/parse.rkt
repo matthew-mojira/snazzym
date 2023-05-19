@@ -21,8 +21,8 @@
     [(list-rest 'if e ss) (If (parse-expr e) (map parse-stat ss))]
     [(list 'if/else e s1 s2)
      (IfElse (parse-expr e) (map parse-stat s1) (map parse-stat s2))]
+    [(list 'set! id e) (Assign id (parse-expr e))]
     [(cons id es) (Call id (map parse-expr es))]))
-; need to figure out how to parse lists of statements better
 
 (define (parse-expr expr)
   (match expr

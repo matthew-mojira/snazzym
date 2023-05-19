@@ -42,14 +42,15 @@
             (compile-stat* s2)
             (Label endif)))]
     [(Call id as) (Jsl (~a id))] ; args unimplemented
+    [(Assign id e) (seq (compile-expr e) (Sta (Long id)))] ; need optimize
     [_ (error "not a statement")]))
 
 (define (compile-expr expr)
   (match expr
     [(Int i) (compile-int i)]
     [(Bool b) (compile-bool b)]
-    [(Call id as) (Jsl (~a id))]
-    [(Var id) (Lda (Long id))])) ; args unimplemented
+    [(Call id as) (Jsl (~a id))] ; args unimplemented
+    [(Var id) (Lda (Long id))]))
 
 (define (compile-int int)
   (Lda (Imm int)))

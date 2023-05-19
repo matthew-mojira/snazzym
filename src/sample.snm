@@ -11,6 +11,8 @@
 
 (func (g bool ()) (return #f))
 
+(func (h int ()) (return x))
+
 (func (main int ())
       (f)
       (g)
@@ -18,10 +20,11 @@
                ((f) ; block stuff
                 (return 1)) ;end of block
                ((if/else #t
-                         ((return (f))) ;proper output value
+                         ((return (h))) ;proper output value
                          ((return 25))))))
 
 (func (init int
             ())
+      (set! x 16)
       (return x))
 (func (vblank int ()) (return 0))

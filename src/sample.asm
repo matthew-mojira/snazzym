@@ -7,56 +7,62 @@ pullpc
 ;f
 f:
     LDA.W #0
-    BEQ   .iftrue7580
-    BRL   .iffalse7581
-.iftrue7580:
+    BEQ   .iftrue7587
+    BRL   .iffalse7588
+.iftrue7587:
     LDA.W #10
     RTL
-    BRL   .endif7582
-.iffalse7581:
+    BRL   .endif7589
+.iffalse7588:
     LDA.W #1
-    BEQ   .iftrue7583
-    BRL   .iffalse7584
-.iftrue7583:
+    BEQ   .iftrue7590
+    BRL   .iffalse7591
+.iftrue7590:
     LDA.W #75
     RTL
-    BRL   .endif7585
-.iffalse7584:
+    BRL   .endif7592
+.iffalse7591:
     LDA.W #11
     RTL
-.endif7585:
-.endif7582:
+.endif7592:
+.endif7589:
 ;g
 g:
     LDA.W #1
+    RTL
+;h
+h:
+    LDA.L x
     RTL
 ;main
 main:
     JSL   f
     JSL   g
     JSL   g
-    BEQ   .iftrue7586
-    BRL   .iffalse7587
-.iftrue7586:
+    BEQ   .iftrue7593
+    BRL   .iffalse7594
+.iftrue7593:
     JSL   f
     LDA.W #1
     RTL
-    BRL   .endif7588
-.iffalse7587:
+    BRL   .endif7595
+.iffalse7594:
     LDA.W #0
-    BEQ   .iftrue7589
-    BRL   .iffalse7590
-.iftrue7589:
-    JSL   f
+    BEQ   .iftrue7596
+    BRL   .iffalse7597
+.iftrue7596:
+    JSL   h
     RTL
-    BRL   .endif7591
-.iffalse7590:
+    BRL   .endif7598
+.iffalse7597:
     LDA.W #25
     RTL
-.endif7591:
-.endif7588:
+.endif7598:
+.endif7595:
 ;init
 init:
+    LDA.W #16
+    STA.L x
     LDA.L x
     RTL
 ;vblank
