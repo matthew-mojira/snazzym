@@ -10,12 +10,23 @@
 (define (compile-top-level prog)
   (match prog
     [(Func id _ as ss) ; args not handled
-     (seq (Comment (~a id)) (Label (~a id)) (flatten (map compile-stat ss)))]))
+     (seq (Comment (~a id)) (Label (~a id)) (compile-stat* ss))]))
+
+(define (compile-stat* stats)
+  (flatten (map compile-stat stats)))
 
 (define (compile-stat stat)
   (match stat
     [(Return expr) (seq (compile-expr expr) (Rtl))]
-    [(If e s1 s2)
+    [(If e ss)
+     (let ([true (gensym ".iftrue")] [endif (gensym ".endif")])
+       (seq (compile-expr e)
+            (Beq true)
+            (Brl endif)
+            (Label true)
+            (compile-stat* ss)
+            (Label endif)))]
+    [(IfElse e s1 s2)
      (let ([true (gensym ".iftrue")]
            [false (gensym ".iffalse")]
            [endif (gensym ".endif")])
@@ -23,10 +34,10 @@
             (Beq true)
             (Brl false)
             (Label true)
-            (compile-stat s1)
+            (compile-stat* s1)
             (Brl endif)
             (Label false)
-            (compile-stat s2)
+            (compile-stat* s2)
             (Label endif)))]
     [(Call id as) (Jsl (~a id))] ; args unimplemented
     [_ (error "not a statement")]))

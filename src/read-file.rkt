@@ -1,6 +1,7 @@
 #lang racket
 (provide main)
-(require "parse.rkt"
+(require racket/pretty
+         "parse.rkt"
          "compile.rkt"
          "type-check.rkt"
          "65816.rkt")
@@ -10,6 +11,7 @@
     (begin
       (read-line p)
       (let ([prog (parse (read-all p))])
+;        (pretty-print prog)
         (type-check prog)
         (printer (compile prog)))
       (close-input-port p))))

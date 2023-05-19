@@ -8,7 +8,8 @@
 ; | Call id es
 ; stat =
 ; | Return e
-; | If e s1 s2
+; | If e ss
+; | IfElse e ss1 ss2
 ; toplevel =
 ; | Func id t as ss
 (struct Int    (i)       #:prefab)
@@ -16,7 +17,8 @@
 (struct Call   (id es)   #:prefab)
 
 (struct Return (e)       #:prefab)
-(struct If     (e s1 s2) #:prefab)
+(struct If     (e ss)    #:prefab)
+(struct IfElse (e s1 s2) #:prefab)
 
 ; (function (id ret-type ()) stuff ...)
 ;                        ^ args list unimplemented

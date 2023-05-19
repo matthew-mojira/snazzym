@@ -8,13 +8,15 @@
 
 (define (parse-top-level prog)
   (match prog
-    [(list-rest 'function (list id type '()) ss)
+    [(list-rest 'func (list id type '()) ss)
      (Func id type '() (map parse-stat ss))]))
 
 (define (parse-stat stat)
   (match stat
     [(list 'return expr) (Return (parse-expr expr))]
-    [(list 'if e s1 s2) (If (parse-expr e) (parse-stat s1) (parse-stat s2))]
+    [(list-rest 'if e ss) (If (parse-expr e) (map parse-stat ss))]
+    [(list 'if/else e s1 s2)
+     (IfElse (parse-expr e) (map parse-stat s1) (map parse-stat s2))]
     [(cons id es) (Call id (map parse-expr es))]))
 ; need to figure out how to parse lists of statements better
 

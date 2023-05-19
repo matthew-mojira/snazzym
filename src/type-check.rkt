@@ -12,18 +12,24 @@
 
 (define (type-check-top-level prog funcs)
   (match prog
-    [(Func _ t _ ss)
-     (for ([s ss])
-       (type-check-stat s t funcs))]))
+    [(Func _ t _ ss) (type-check-stat* ss t funcs)]))
+
+(define (type-check-stat* ss type funcs)
+  (for ([s ss])
+    (type-check-stat s type funcs)))
 
 (define (type-check-stat stat type funcs)
   (match stat
     [(Return e) (type-check-expr e type funcs)]
-    [(If e s1 s2)
+    [(If e ss)
      (begin
        (type-check-expr e 'bool funcs)
-       (type-check-stat s1 type funcs)
-       (type-check-stat s2 type funcs))]
+       (type-check-stat* ss type funcs))]
+    [(IfElse e s1 s2)
+     (begin
+       (type-check-expr e 'bool funcs)
+       (type-check-stat* s1 type funcs)
+       (type-check-stat* s2 type funcs))]
     [(Call id es) (type-check-call id es funcs)]
     [_ #t]))
 
