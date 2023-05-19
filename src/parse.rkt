@@ -9,7 +9,11 @@
 (define (parse-top-level prog)
   (match prog
     [(list-rest 'func (list id type '()) ss)
-     (Func id type '() (map parse-stat ss))]))
+     (Func id type '() (parse-stat* ss))]
+    [(list 'global id t) (Global id t)]))
+
+(define (parse-stat* stats)
+  (map parse-stat stats))
 
 (define (parse-stat stat)
   (match stat
@@ -24,7 +28,8 @@
   (match expr
     [(? exact-integer?) (Int expr)]
     [(? boolean?) (Bool expr)]
-    [(cons id es) (Call id (map parse-expr es))]))
+    [(cons id es) (Call id (map parse-expr es))]
+    [(? symbol? expr) (Var expr)]))
 
 ; a function call can be either a statement or an expression.
 ; in the future, it might make sense to make all expressions also be statements

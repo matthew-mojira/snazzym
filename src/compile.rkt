@@ -2,15 +2,17 @@
 
 (provide compile)
 (require "ast.rkt"
-         "65816.rkt")
+         "65816.rkt"
+         "types.rkt")
 
 (define (compile progs)
-  (flatten (map compile-top-level progs)))
+  (seq (make-global-list progs) (flatten (map compile-top-level progs))))
 
 (define (compile-top-level prog)
   (match prog
     [(Func id _ as ss) ; args not handled
-     (seq (Comment (~a id)) (Label (~a id)) (compile-stat* ss))]))
+     (seq (Comment (~a id)) (Label (~a id)) (compile-stat* ss))]
+    [_ '()]))
 
 (define (compile-stat* stats)
   (flatten (map compile-stat stats)))
@@ -46,7 +48,8 @@
   (match expr
     [(Int i) (compile-int i)]
     [(Bool b) (compile-bool b)]
-    [(Call id as) (Jsl (~a id))])) ; args unimplemented
+    [(Call id as) (Jsl (~a id))]
+    [(Var id) (Lda (Long id))])) ; args unimplemented
 
 (define (compile-int int)
   (Lda (Imm int)))
@@ -66,3 +69,12 @@
 ;                                    (string->list (symbol->string s))))
 ;                 "_"
 ;                 (number->string (eq-hash-code s) 16)))
+
+(define (make-global-list globals)
+  (seq (Pushpc)
+       (Org "$7E0010") ; hardcoded start of global area
+       (flatten (map (match-lambda
+                       [(Global id t) (Skip id (type->size t))]
+                       [_ '()])
+                     globals))
+       (Pullpc)))

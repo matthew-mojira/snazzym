@@ -12,6 +12,7 @@
 (struct Pushpc () #:prefab)
 (struct Pullpc () #:prefab)
 (struct Data8 (data) #:prefab)
+(struct Skip (id o) #:prefab)
 ;; INSTRUCTIONS
 (struct Adc (x) #:prefab)
 (struct Sbc (x) #:prefab)
@@ -113,6 +114,7 @@
     [(Label l) (string-append (~a l) ":")]
     [(Comment s) (string-append ";" s)]
     [(Data8 s) (string-append "    db " (addr-mode->string s))]
+    [(Skip id o) (string-append (~a id) ": skip " (~a o))]
     [(Adc x) (string-append "    ADC" (addr-mode->string x))]
     [(Sbc x) (string-append "    SBC" (addr-mode->string x))]
     [(Cmp x) (string-append "    CMP" (addr-mode->string x))]
@@ -210,47 +212,47 @@
 ; structs cover all the addressing modes). The assembler will shout at you when
 ; you try to use an instruction with an unsupported addressing mode. We're not
 ; gonna check that; it's your fault.
-(struct Imm       (num) #:prefab) ; like #$1234
-(struct Imm8      (num) #:prefab) ; like #$12  (used only for certain instructions)
-(struct Abs       (addr) #:prefab) ; like $1234
-(struct AbsX      (addr) #:prefab) ; like $1234,X
-(struct AbsY      (addr) #:prefab) ; like $1234,Y
-(struct AbsInd    (addr) #:prefab) ; like [$1234]
-(struct AbsInd16  (addr) #:prefab) ; like ($1234)
-(struct Zp        (addr) #:prefab) ; like $12
-(struct ZpX       (addr) #:prefab) ; like $12,X
-(struct ZpY       (addr) #:prefab) ; like $12,Y
-(struct ZpInd     (addr) #:prefab) ; like [$12]
-(struct ZpIndY    (addr) #:prefab) ;like [$12],Y
-(struct Acc       (count) #:prefab) ; for special instructions like LSR #4
-(struct Long      (addr) #:prefab) ; like $123456
-(struct LongX     (addr) #:prefab) ; like $123456,X
-(struct Stk       (offset) #:prefab) ; like $12,S
-(struct Mov       (src dest) #:prefab) ; like $12,$34
-(struct Quote     (str) #:prefab)
+(struct Imm (num) #:prefab) ; like #$1234
+(struct Imm8 (num) #:prefab) ; like #$12  (used only for certain instructions)
+(struct Abs (addr) #:prefab) ; like $1234
+(struct AbsX (addr) #:prefab) ; like $1234,X
+(struct AbsY (addr) #:prefab) ; like $1234,Y
+(struct AbsInd (addr) #:prefab) ; like [$1234]
+(struct AbsInd16 (addr) #:prefab) ; like ($1234)
+(struct Zp (addr) #:prefab) ; like $12
+(struct ZpX (addr) #:prefab) ; like $12,X
+(struct ZpY (addr) #:prefab) ; like $12,Y
+(struct ZpInd (addr) #:prefab) ; like [$12]
+(struct ZpIndY (addr) #:prefab) ;like [$12],Y
+(struct Acc (count) #:prefab) ; for special instructions like LSR #4
+(struct Long (addr) #:prefab) ; like $123456
+(struct LongX (addr) #:prefab) ; like $123456,X
+(struct Stk (offset) #:prefab) ; like $12,S
+(struct Mov (src dest) #:prefab) ; like $12,$34
+(struct Quote (str) #:prefab)
 
 (define (addr-mode->string mode)
   (match mode
-    [(Imm n)      (string-append ".W #" (~a n))]
-    [(Imm8 n)     (string-append "   #" (~a n))]
-    [(Abs a)      (string-append ".W " (~a a))]
-    [(AbsX a)     (string-append ".W " (~a a) ",X")]
-    [(AbsY a)     (string-append ".W " (~a a) ",Y")]
-    [(AbsInd a)   (string-append ".W [" (~a a) "]")]
+    [(Imm n) (string-append ".W #" (~a n))]
+    [(Imm8 n) (string-append "   #" (~a n))]
+    [(Abs a) (string-append ".W " (~a a))]
+    [(AbsX a) (string-append ".W " (~a a) ",X")]
+    [(AbsY a) (string-append ".W " (~a a) ",Y")]
+    [(AbsInd a) (string-append ".W [" (~a a) "]")]
     [(AbsInd16 a) (string-append ".W (" (~a a) ")")]
-    [(Zp a)       (string-append ".B " (~a a))]
-    [(ZpX a)      (string-append ".B " (~a a) ",X")]
-    [(ZpY a)      (string-append ".B " (~a a) ",Y")]
-    [(ZpInd a)    (string-append ".B [" (~a a) "]")]
-    [(ZpIndY a)   (string-append ".B [" (~a a) "],Y")]
-    [(Long a)     (string-append ".L " (~a a))]
-    [(LongX a)    (string-append ".L " (~a a) ",X")]
-    [(Acc c)      (string-append "   #" (~a c))]
-    [(Stk s)      (string-append ".B " (~a s) ",S")]
-    [(Mov d s)    (string-append "   " (~a d) "," (~a s))]
-    [(Quote s)    (string-append "\"" (string-escape s) "\"")]
-    [(Label l)    (string-append "   " (~a l))]
-    [n            (~a n)])) ;dangerous wildcard
+    [(Zp a) (string-append ".B " (~a a))]
+    [(ZpX a) (string-append ".B " (~a a) ",X")]
+    [(ZpY a) (string-append ".B " (~a a) ",Y")]
+    [(ZpInd a) (string-append ".B [" (~a a) "]")]
+    [(ZpIndY a) (string-append ".B [" (~a a) "],Y")]
+    [(Long a) (string-append ".L " (~a a))]
+    [(LongX a) (string-append ".L " (~a a) ",X")]
+    [(Acc c) (string-append "   #" (~a c))]
+    [(Stk s) (string-append ".B " (~a s) ",S")]
+    [(Mov d s) (string-append "   " (~a d) "," (~a s))]
+    [(Quote s) (string-append "\"" (string-escape s) "\"")]
+    [(Label l) (string-append "   " (~a l))]
+    [n (~a n)])) ;dangerous wildcard
 
 (define (comp->string lst)
   (foldr (lambda (ins rst) (string-append (instr->string ins) "\n" rst))

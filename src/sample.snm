@@ -1,5 +1,9 @@
 #lang snazzym
 
+(global y int)
+(global z bool)
+(global x int)
+
 (func (f int ())
       (if/else #t ; main check
                ((return 10))
@@ -17,6 +21,7 @@
                          ((return (f))) ;proper output value
                          ((return 25))))))
 
-(func (init int ()) (return 0))
+(func (init int
+            ())
+      (return x))
 (func (vblank int ()) (return 0))
-

@@ -13,6 +13,6 @@
 
 (define (lookup-func id funcs)
   (findf (match-lambda
-           [(Func idf t as ss) (if (eq? id idf) (Func idf t as ss) #f)]
+           [(Func idf t as ss) (eq? id idf)]
            [_ #f])
          funcs))
