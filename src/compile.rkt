@@ -4,8 +4,15 @@
 (require "ast.rkt"
          "65816.rkt")
 
-(define (compile prog)
-  (seq (Label "entry") (flatten (map compile-stat prog))))
+(define (compile progs)
+  (flatten (map compile-top-level progs)))
+
+(define (compile-top-level prog)
+  (match prog
+    [(Func id _ ss)
+     (seq (Comment (~a id))
+          (Label (symbol->label id))
+          (flatten (map compile-stat ss)))]))
 
 (define (compile-stat stat)
   (match stat
@@ -27,11 +34,23 @@
 (define (compile-expr expr)
   (match expr
     [(Int i) (compile-int i)]
-    [(Bool b) (compile-bool b)]
-    ))
+    [(Bool b) (compile-bool b)]))
 
 (define (compile-int int)
   (Lda (Imm int)))
 
 (define (compile-bool bool)
   (Lda (Imm (if bool 0 1))))
+
+(define (symbol->label s)
+  (string-append "func_"
+                 (list->string (map (λ (c)
+                                      (if (or (char<=? #\a c #\z)
+                                              (char<=? #\A c #\Z)
+                                              (char<=? #\0 c #\9)
+                                              (memq c '(#\_)))
+                                          c
+                                          #\_))
+                                    (string->list (symbol->string s))))
+                 "_"
+                 (number->string (eq-hash-code s) 16)))
