@@ -1,0 +1,10 @@
+#lang snazzym
+
+(global x int)
+
+(func (main void ()) (return ()))
+(func (vblank void ()) (return ()))
+(func (init void
+            ())
+      (set! x 10)
+      (return ()))

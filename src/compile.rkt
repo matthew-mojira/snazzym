@@ -49,6 +49,7 @@
   (match expr
     [(Int i) (compile-int i)]
     [(Bool b) (compile-bool b)]
+    [(Void) '()]
     [(Call id as) (Jsl (~a id))] ; args unimplemented
     [(Var id) (Lda (Long id))]
     [(BoolOp1 op e)

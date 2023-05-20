@@ -14,6 +14,8 @@
 (define (type-check-top-level prog funcs globs)
   (match prog
     [(Func _ t _ ss) (type-check-stat* ss t funcs globs)]
+    [(Global _ 'void) (error "Variable defined of type void")]
+    ; hackfix!!
     [_ #t]))
 
 (define (type-check-stat* ss type funcs globs)
@@ -76,7 +78,8 @@
     [(IntOp1 _ _) 'int]
     [(IntOp2 _ _ _) 'int]
     [(Call id es) (match-let ([(Func _ t _ _) (lookup-func id funcs)]) t)]
-    [(Var id) (typeof-global id globs)]))
+    [(Var id) (typeof-global id globs)]
+    [(Void) 'void]))
 
 (define (type-check-call id es funcs globs)
   (match-let ([(Func _ _ as ss) (lookup-func id funcs)])

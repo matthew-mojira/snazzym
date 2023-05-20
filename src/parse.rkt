@@ -28,6 +28,7 @@
   (match expr
     [(? exact-integer?) (Int expr)]
     [(? boolean?) (Bool expr)]
+    ['() (Void)]
     [(list (? (op? bool-op1) p1) e) (BoolOp1 p1 (parse-expr e))]
     [(list (? (op? bool-op2) p2) e1 e2)
      (BoolOp2 p2 (parse-expr e1) (parse-expr e2))]

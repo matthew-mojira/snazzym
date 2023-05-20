@@ -13,6 +13,7 @@
 ; | IntOp2 op e1 e2
 ; | CompOp1 op e
 ; | CompOp2 op e1 e2
+; | Void
 ; stat =
 ; | Return e
 ; | If e ss
@@ -25,6 +26,7 @@
 (struct Bool   (b)       #:prefab)
 (struct Call   (id es)   #:prefab)
 (struct Var    (id)      #:prefab)
+(struct Void   ()        #:prefab)
 
 (struct BoolOp1 (op e)     #:prefab)
 (struct BoolOp2 (op e1 e2) #:prefab)
