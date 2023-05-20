@@ -13,7 +13,7 @@
 
 (define (type-check-top-level prog funcs globs)
   (match prog
-    [(Func _ t _ ss) (type-check-stat* ss t funcs globs '())]
+    [(Func _ t bs ss) (type-check-stat* ss t funcs globs (reverse bs))]
     [(Global _ 'void) (error "Variable defined of type void")]
     ; hackfix!!
     [_ #t]))
@@ -88,7 +88,7 @@
   (match-let ([(Func _ _ as ss) (lookup-func id funcs)])
     (if (= (length as) (length es))
         (for ([a as] [e es])
-          (type-check-expr e a funcs globs locals))
+          (type-check-expr e (cdr a) funcs globs locals))
         (error "Arity mismatch"))))
 
 (define (typeof-var id globs locals)

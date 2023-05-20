@@ -12,7 +12,9 @@
 (define (compile-top-level prog)
   (match prog
     [(Func id _ as ss) ; args not handled
-     (seq (Comment (~a id)) (Label (~a id)) (compile-stat* ss '()))]
+     (seq (Comment (~a id))
+          (Label (~a id))
+          (compile-stat* ss (cons '(#f . long) (reverse as))))]
     [_ '()]))
 
 (define (compile-stat* stats lenv)
@@ -22,10 +24,11 @@
   (match stat
     [(Return expr) ; need to deallocate any remaining local variables bound
      (seq (compile-expr expr lenv)
-          (build-list (length lenv) (const (Ply)))
+          (build-list (length-local lenv) (const (Ply)))
           ; this is just a basic fix. in the future, lenv might contain
           ; parameters which are put on the stack before the return value (and
           ; thus shouldn't be pulled off the stack)
+          ; LENGTH-LOCAL DOES THIS!?
           ; also, we might want processor flags from the expression to be
           ; preserved
           (Rtl))]
@@ -50,7 +53,7 @@
             (Label false)
             (compile-stat* s2 lenv)
             (Label endif)))]
-    [(Call id as) (Jsl (~a id))] ; args unimplemented
+    [(Call id as) (compile-call id as lenv)]
     [(Assign id e)
      (seq (compile-expr e lenv)
           (let ([offset (lookup-local id lenv)])
@@ -65,8 +68,8 @@
           (build-list (length bs) (const (Pha))) ; allocate
           (compile-stat* ss (append (reverse bs) lenv)) ; inner statements
           (build-list (length bs) (const (Ply))))] ; deallocate
-          ; need to change allocation/deallocation strategy when we have
-          ; different sized types
+    ; need to change allocation/deallocation strategy when we have
+    ; different sized types
     [_ (error "not a statement")]))
 
 (define (compile-expr expr lenv)
@@ -74,7 +77,7 @@
     [(Int i) (compile-int i)]
     [(Bool b) (compile-bool b)]
     [(Void) '()]
-    [(Call id as) (Jsl (~a id))] ; args unimplemented
+    [(Call id as) (compile-call id as lenv)]
     [(Var id)
      (let ([offset (lookup-local id lenv)])
        (if offset
@@ -144,6 +147,24 @@
 
 (define (compile-bool bool)
   (Lda (Imm (if bool 1 0))))
+
+; calling conventions:
+; caller puts arguments on the stack
+; then calls: putting the return address at the top
+; once the call is complete, deallocate values (leave accumulator with
+; result)
+(define (compile-call id as lenv)
+  (seq (compile-expr* as lenv)
+       (Jsl (~a id))
+       (build-list (length as) (const (Ply)))))
+
+(define (compile-expr* es lenv)
+  (match es
+    ['() '()]
+    [(cons e es)
+     (seq (compile-expr e lenv)
+          (Pha)
+          (compile-expr* es (cons '(#f . #f) lenv)))]))
 
 (define (make-global-list globals)
   (seq (Pushpc)

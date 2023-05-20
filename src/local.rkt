@@ -11,3 +11,9 @@
          1
          (let ([rest (lookup-local id rest)])
            (if rest (+ (type->size t) rest) #f)))]))
+
+(define (length-local lenv)
+  (match lenv
+    ['() 0]
+    [(cons (cons _ 'long) _) 0]
+    [(cons (cons _ t) ls) (+ (type->size t) (length-local ls))]))

@@ -8,8 +8,15 @@
 
 (define (parse-top-level prog)
   (match prog
-    [(list-rest 'func (list id type '()) ss)
-     (Func id type '() (parse-stat* ss))]
+    [(list-rest 'func (list id type ps) ss)
+     (Func id
+           type
+           ; this turns (x int) into (x . int)
+           ; proper list of 2 -> pair
+           (map (match-lambda
+                  [(list id t) (cons id t)])
+                ps)
+           (parse-stat* ss))]
     [(list 'global id t) (Global id t)]))
 
 (define (parse-stat* stats)

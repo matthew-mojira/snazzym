@@ -1,0 +1,10 @@
+#lang snazzym
+
+(func (sub int ([x int] [y int])) (return (- x y)))
+
+(func (main void ()) (return ()))
+(func (vblank void ()) (return ()))
+(func (init void
+            ())
+      (local ([x int]) (set! x (sub 3 1)))
+      (return ()))
