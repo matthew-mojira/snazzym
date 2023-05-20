@@ -23,7 +23,7 @@
     [(If e ss)
      (let ([true (gensym ".iftrue")] [endif (gensym ".endif")])
        (seq (compile-expr e)
-            (Beq true)
+            (Bne true)
             (Brl endif)
             (Label true)
             (compile-stat* ss)
@@ -33,7 +33,7 @@
            [false (gensym ".iffalse")]
            [endif (gensym ".endif")])
        (seq (compile-expr e)
-            (Beq true)
+            (Bne true)
             (Brl false)
             (Label true)
             (compile-stat* s1)
@@ -50,13 +50,55 @@
     [(Int i) (compile-int i)]
     [(Bool b) (compile-bool b)]
     [(Call id as) (Jsl (~a id))] ; args unimplemented
-    [(Var id) (Lda (Long id))]))
+    [(Var id) (Lda (Long id))]
+    [(BoolOp1 op e)
+     (seq (compile-expr e)
+          (match op
+            ['not (Eor (Imm 1))]))]
+    [(BoolOp2 op e1 e2)
+     (seq (compile-expr e1)
+          (Pha) ; think about local environments later!
+          (compile-expr e2)
+          (match op
+            ['and (And (Stk 1))]
+            ['or (Ora (Stk 1))]
+            ['eor (Eor (Stk 1))])
+          (Ply))] ; think about use of Y register here
+    [(IntOp2 op e1 e2)
+     (seq (compile-expr e2)
+          (Pha) ; think about local environments later!
+          (compile-expr e1)
+          (match op
+            ['+ (seq (Clc) (Adc (Stk 1)))]
+            ['- (seq (Sec) (Sbc (Stk 1)))])
+          (Ply))] ; think about use of Y register here
+    ; idea: get rid of boolean type altogether and move these comparisons
+    ; directly into the if statement (or provide a compiler optimization if
+    ; the expression in the if is just one computation)
+    [(CompOp2 op e1 e2)
+     (let ([true (gensym ".comp_true")] [end (gensym ".comp_end")])
+       (seq (case op
+              [(= != > <=) (seq (compile-expr e1) (Pha) (compile-expr e2))]
+              [(< >=) (seq (compile-expr e2) (Pha) (compile-expr e1))])
+            (Cmp (Stk 1))
+            (case op
+              [(=) (Beq true)]
+              [(!=) (Bne true)]
+              [(< >) (Bcc true)]
+              [(>= <=) (Bcs true)])
+            (Lda (Imm 0))
+            (Bra end)
+            (Label true) ; true case
+            (Lda (Imm 1))
+            (Label end)
+            (Ply)))] ; think about use of Y register here
+    ))
 
 (define (compile-int int)
   (Lda (Imm int)))
 
 (define (compile-bool bool)
-  (Lda (Imm (if bool 0 1))))
+  (Lda (Imm (if bool 1 0))))
 
 ;(define (symbol->label s)
 ;  (string-append "func_"

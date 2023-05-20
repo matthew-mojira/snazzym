@@ -1,0 +1,6 @@
+#lang snazzym
+
+(func (main int ()) (return (- 7 2)))
+(func (vblank int ()) (return 0))
+
+(func (init bool ()) (return (< 10 20)))

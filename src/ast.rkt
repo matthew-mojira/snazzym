@@ -7,6 +7,12 @@
 ; | Bool b
 ; | Call id es
 ; | Var id
+; | BoolOp1 op e
+; | BoolOp2 op e1 e2
+; | IntOp1 op e
+; | IntOp2 op e1 e2
+; | CompOp1 op e
+; | CompOp2 op e1 e2
 ; stat =
 ; | Return e
 ; | If e ss
@@ -20,6 +26,13 @@
 (struct Call   (id es)   #:prefab)
 (struct Var    (id)      #:prefab)
 
+(struct BoolOp1 (op e)     #:prefab)
+(struct BoolOp2 (op e1 e2) #:prefab)
+(struct CompOp1 (op e)     #:prefab)
+(struct CompOp2 (op e1 e2) #:prefab)
+(struct IntOp1  (op e)     #:prefab)
+(struct IntOp2  (op e1 e2) #:prefab)
+
 (struct Return (e)       #:prefab)
 (struct If     (e ss)    #:prefab)
 (struct IfElse (e s1 s2) #:prefab)
@@ -29,3 +42,12 @@
 ;                        ^ args list unimplemented
 (struct Func   (id t as ss) #:prefab)
 (struct Global (id t)       #:prefab)
+
+
+(define bool-op1 '(not))
+(define bool-op2 '(and or eor))
+(define comp-op1 '())
+(define comp-op2 '(= != > < >= <=))
+(define int-op1 '())
+(define int-op2 '(+ -))
+

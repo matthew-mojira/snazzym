@@ -28,8 +28,20 @@
   (match expr
     [(? exact-integer?) (Int expr)]
     [(? boolean?) (Bool expr)]
+    [(list (? (op? bool-op1) p1) e) (BoolOp1 p1 (parse-expr e))]
+    [(list (? (op? bool-op2) p2) e1 e2)
+     (BoolOp2 p2 (parse-expr e1) (parse-expr e2))]
+    [(list (? (op? comp-op1) p1) e) (CompOp1 p1 (parse-expr e))]
+    [(list (? (op? comp-op2) p2) e1 e2)
+     (CompOp2 p2 (parse-expr e1) (parse-expr e2))]
+    [(list (? (op? int-op1) p1) e) (IntOp1 p1 (parse-expr e))]
+    [(list (? (op? int-op2) p2) e1 e2)
+     (IntOp2 p2 (parse-expr e1) (parse-expr e2))]
     [(cons id es) (Call id (map parse-expr es))]
     [(? symbol? expr) (Var expr)]))
 
 ; a function call can be either a statement or an expression.
 ; in the future, it might make sense to make all expressions also be statements
+
+(define (op? ops)
+  (lambda (x) (and (symbol? x) (memq x ops))))

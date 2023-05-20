@@ -38,9 +38,26 @@
 
 (define (type-check-expr expr type funcs globs)
   (begin
+    ; first, do type checking of any subexpressions
     (match expr
       [(Call id es) (type-check-call id es funcs globs)]
+      [(BoolOp1 _ e) (type-check-expr e 'bool funcs globs)]
+      [(BoolOp2 _ e1 e2)
+       (begin
+         (type-check-expr e1 'bool funcs globs)
+         (type-check-expr e2 'bool funcs globs))]
+      [(CompOp1 _ e) (type-check-expr e 'int funcs globs)]
+      [(CompOp2 _ e1 e2)
+       (begin
+         (type-check-expr e1 'int funcs globs)
+         (type-check-expr e2 'int funcs globs))]
+      [(IntOp1 _ e) (type-check-expr e 'int funcs globs)]
+      [(IntOp2 _ e1 e2)
+       (begin
+         (type-check-expr e1 'int funcs globs)
+         (type-check-expr e2 'int funcs globs))]
       [_ #t])
+    ; second, compare actual type of expression with expected
     (if (eq? (typeof-expr expr funcs globs) type)
         #t
         (error "Type error: expected"
@@ -52,6 +69,12 @@
   (match expr
     [(Int _) 'int]
     [(Bool _) 'bool]
+    [(BoolOp1 _ _) 'bool]
+    [(BoolOp2 _ _ _) 'bool]
+    [(CompOp1 _ _) 'bool]
+    [(CompOp2 _ _ _) 'bool]
+    [(IntOp1 _ _) 'int]
+    [(IntOp2 _ _ _) 'int]
     [(Call id es) (match-let ([(Func _ t _ _) (lookup-func id funcs)]) t)]
     [(Var id) (typeof-global id globs)]))
 
@@ -67,4 +90,5 @@
                   [(Global idg t) (if (eq? id idg) t #f)]
                   [_ #f])
                 globs)
-    [(Global _ t) t]))
+    [(Global _ t) t]
+    [_ (error "Failed global lookup")]))

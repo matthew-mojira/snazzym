@@ -1,0 +1,13 @@
+#lang snazzym
+
+(global x bool)
+
+(func (main int ())
+      (if/else x ((set! x (not x)) (return 2)) ((set! x (not x)) (return 4))))
+
+(func (init int
+            ())
+      (set! x #f)
+      (return 0))
+
+(func (vblank int ()) (return 0))
