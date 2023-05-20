@@ -1,10 +1,14 @@
 #lang snazzym
 
-(global x int)
+(global z int)
 
 (func (main void ()) (return ()))
 (func (vblank void ()) (return ()))
 (func (init void
             ())
-      (set! x 10)
+      (local ([x int] [y bool])
+             (set! x 10)
+             (set! y #f)
+             (if y (set! z (+ x 100)))
+             (return ()))
       (return ()))

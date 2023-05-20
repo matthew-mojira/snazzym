@@ -19,6 +19,7 @@
 ; | If e ss
 ; | IfElse e ss1 ss2
 ; | Assign id e
+; | Local bs ss
 ; toplevel =
 ; | Func id t as ss
 ; | Global id t
@@ -39,6 +40,7 @@
 (struct If     (e ss)    #:prefab)
 (struct IfElse (e s1 s2) #:prefab)
 (struct Assign (id e)    #:prefab)
+(struct Local  (bs ss)   #:prefab)
 
 ; (function (id ret-type ()) stuff ...)
 ;                        ^ args list unimplemented

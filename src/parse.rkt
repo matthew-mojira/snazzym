@@ -22,6 +22,7 @@
     [(list 'if/else e s1 s2)
      (IfElse (parse-expr e) (map parse-stat s1) (map parse-stat s2))]
     [(list 'set! id e) (Assign id (parse-expr e))]
+    [(list-rest 'local bs ss) (parse-let bs ss)]
     [(cons id es) (Call id (map parse-expr es))]))
 
 (define (parse-expr expr)
@@ -43,6 +44,13 @@
 
 ; a function call can be either a statement or an expression.
 ; in the future, it might make sense to make all expressions also be statements
+
+(define (parse-let bs ss)
+  (match bs
+    ['() (Local '() (parse-stat* ss))]
+    [(cons (list (? symbol? x1) t1) bs)
+     (match (parse-let bs ss)
+       [(Local bs ss) (Local (cons (cons x1 t1) bs) ss)])]))
 
 (define (op? ops)
   (lambda (x) (and (symbol? x) (memq x ops))))

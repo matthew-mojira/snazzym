@@ -3,7 +3,8 @@
 (provide compile)
 (require "ast.rkt"
          "65816.rkt"
-         "types.rkt")
+         "types.rkt"
+         "local.rkt")
 
 (define (compile progs)
   (seq (make-global-list progs) (flatten (map compile-top-level progs))))
@@ -11,71 +12,99 @@
 (define (compile-top-level prog)
   (match prog
     [(Func id _ as ss) ; args not handled
-     (seq (Comment (~a id)) (Label (~a id)) (compile-stat* ss))]
+     (seq (Comment (~a id)) (Label (~a id)) (compile-stat* ss '()))]
     [_ '()]))
 
-(define (compile-stat* stats)
-  (flatten (map compile-stat stats)))
+(define (compile-stat* stats lenv)
+  (flatten (map (lambda (s) (compile-stat s lenv)) stats)))
 
-(define (compile-stat stat)
+(define (compile-stat stat lenv)
   (match stat
-    [(Return expr) (seq (compile-expr expr) (Rtl))]
+    [(Return expr) ; need to deallocate any remaining local variables bound
+     (seq (compile-expr expr lenv)
+          (build-list (length lenv) (const (Ply)))
+          ; this is just a basic fix. in the future, lenv might contain
+          ; parameters which are put on the stack before the return value (and
+          ; thus shouldn't be pulled off the stack)
+          ; also, we might want processor flags from the expression to be
+          ; preserved
+          (Rtl))]
     [(If e ss)
      (let ([true (gensym ".iftrue")] [endif (gensym ".endif")])
-       (seq (compile-expr e)
+       (seq (compile-expr e lenv)
             (Bne true)
             (Brl endif)
             (Label true)
-            (compile-stat* ss)
+            (compile-stat* ss lenv)
             (Label endif)))]
     [(IfElse e s1 s2)
      (let ([true (gensym ".iftrue")]
            [false (gensym ".iffalse")]
            [endif (gensym ".endif")])
-       (seq (compile-expr e)
+       (seq (compile-expr e lenv)
             (Bne true)
             (Brl false)
             (Label true)
-            (compile-stat* s1)
+            (compile-stat* s1 lenv)
             (Brl endif)
             (Label false)
-            (compile-stat* s2)
+            (compile-stat* s2 lenv)
             (Label endif)))]
     [(Call id as) (Jsl (~a id))] ; args unimplemented
-    [(Assign id e) (seq (compile-expr e) (Sta (Long id)))] ; need optimize
+    [(Assign id e)
+     (seq (compile-expr e lenv)
+          (let ([offset (lookup-local id lenv)])
+            (if offset
+                (Sta (Stk offset)) ; local
+                (Sta (Long id)))) ; not local? must be global
+          ; SHOULD OPTIMIZE LONG!!
+          )]
+    ; also, need different schemes of storage based on type eventually
+    [(Local bs ss)
+     (seq (Lda (Imm 0)) ; nice initialization
+          (build-list (length bs) (const (Pha))) ; allocate
+          (compile-stat* ss (append (reverse bs) lenv)) ; inner statements
+          (build-list (length bs) (const (Ply))))] ; deallocate
+          ; need to change allocation/deallocation strategy when we have
+          ; different sized types
     [_ (error "not a statement")]))
 
-(define (compile-expr expr)
+(define (compile-expr expr lenv)
   (match expr
     [(Int i) (compile-int i)]
     [(Bool b) (compile-bool b)]
     [(Void) '()]
     [(Call id as) (Jsl (~a id))] ; args unimplemented
-    [(Var id) (Lda (Long id))]
+    [(Var id)
+     (let ([offset (lookup-local id lenv)])
+       (if offset
+           (Lda (Stk offset)) ; local
+           (Lda (Long id))))] ; not local? must be global
+    ; SHOULD OPTIMIZE LONG!!
     [(BoolOp1 op e)
-     (seq (compile-expr e)
+     (seq (compile-expr e lenv)
           (match op
             ['not (Eor (Imm 1))]))]
     [(BoolOp2 op e1 e2)
-     (seq (compile-expr e1)
-          (Pha) ; think about local environments later!
-          (compile-expr e2)
+     (seq (compile-expr e1 lenv)
+          (Pha)
+          (compile-expr e2 (cons '(#f . bool) lenv))
           (match op
             ['and (And (Stk 1))]
             ['or (Ora (Stk 1))]
             ['eor (Eor (Stk 1))])
           (Ply))] ; think about use of Y register here
     [(IntOp1 op e)
-     (seq (compile-expr e)
+     (seq (compile-expr e lenv)
           (match op
             ['<< (Asl (Acc 1))]
             ['>> (Lsr (Acc 1))]
             ['1+ (Inc (Acc 1))]
             ['-1 (Dec (Acc 1))]))]
     [(IntOp2 op e1 e2)
-     (seq (compile-expr e2)
-          (Pha) ; think about local environments later!
-          (compile-expr e1)
+     (seq (compile-expr e2 lenv)
+          (Pha)
+          (compile-expr e1 (cons '(#f . int) lenv))
           (match op
             ['+ (seq (Clc) (Adc (Stk 1)))]
             ['- (seq (Sec) (Sbc (Stk 1)))])
@@ -86,8 +115,14 @@
     [(CompOp2 op e1 e2)
      (let ([true (gensym ".comp_true")] [end (gensym ".comp_end")])
        (seq (case op
-              [(= != > <=) (seq (compile-expr e1) (Pha) (compile-expr e2))]
-              [(< >=) (seq (compile-expr e2) (Pha) (compile-expr e1))])
+              [(= != > <=)
+               (seq (compile-expr e1 lenv)
+                    (Pha)
+                    (compile-expr e2 (cons '(#f . int) lenv)))]
+              [(< >=)
+               (seq (compile-expr e2 lenv)
+                    (Pha)
+                    (compile-expr e1 (cons '(#f . int) lenv)))])
             ; ALERT! COMPARISONS ARE UNSIGNED!!!
             ; OH NO... SIGNED AND UNSIGNED TYPES??
             (Cmp (Stk 1))
@@ -109,19 +144,6 @@
 
 (define (compile-bool bool)
   (Lda (Imm (if bool 1 0))))
-
-;(define (symbol->label s)
-;  (string-append "func_"
-;                 (list->string (map (λ (c)
-;                                      (if (or (char<=? #\a c #\z)
-;                                              (char<=? #\A c #\Z)
-;                                              (char<=? #\0 c #\9)
-;                                              (memq c '(#\_)))
-;                                          c
-;                                          #\_))
-;                                    (string->list (symbol->string s))))
-;                 "_"
-;                 (number->string (eq-hash-code s) 16)))
 
 (define (make-global-list globals)
   (seq (Pushpc)
