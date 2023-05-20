@@ -1,6 +1,11 @@
 #lang snazzym
 
-(func (main int ()) (return (- 7 2)))
+(global x int)
+
+(func (main int ()) (set! x (1+ x)) (return x))
 (func (vblank int ()) (return 0))
 
-(func (init bool ()) (return (< 10 20)))
+(func (init bool
+            ())
+      (set! x 0)
+      (return (< 10 20)))

@@ -64,6 +64,13 @@
             ['or (Ora (Stk 1))]
             ['eor (Eor (Stk 1))])
           (Ply))] ; think about use of Y register here
+    [(IntOp1 op e)
+     (seq (compile-expr e)
+          (match op
+            ['<< (Asl (Acc 1))]
+            ['>> (Lsr (Acc 1))]
+            ['1+ (Inc (Acc 1))]
+            ['-1 (Dec (Acc 1))]))]
     [(IntOp2 op e1 e2)
      (seq (compile-expr e2)
           (Pha) ; think about local environments later!
@@ -80,6 +87,8 @@
        (seq (case op
               [(= != > <=) (seq (compile-expr e1) (Pha) (compile-expr e2))]
               [(< >=) (seq (compile-expr e2) (Pha) (compile-expr e1))])
+            ; ALERT! COMPARISONS ARE UNSIGNED!!!
+            ; OH NO... SIGNED AND UNSIGNED TYPES??
             (Cmp (Stk 1))
             (case op
               [(=) (Beq true)]
