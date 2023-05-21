@@ -31,6 +31,7 @@
     [(list 'set! id e) (Assign id (parse-expr e))]
     [(list-rest 'local bs ss) (parse-let bs ss)]
     [(list-rest 'while e ss) (While (parse-expr e) (parse-stat* ss))]
+    [(list-rest 'native as) (Native as)]
     [(cons id es) (Call id (map parse-expr es))]))
 
 (define (parse-expr expr)

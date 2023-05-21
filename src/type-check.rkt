@@ -69,7 +69,7 @@
     ; second, compare actual type of expression with expected
     (if (eq? (typeof-expr expr funcs globs locals) type)
         #t
-        (error (string-appen "Type error: expected "
+        (error (string-append "Type error: expected "
                              (~a type)
                              " but got "
                              (~a (typeof-expr expr funcs globs locals)))))))

@@ -1,0 +1,15 @@
+#lang snazzym
+
+(func (main void ()) (return ()))
+(func (vblank void ()) (return ()))
+(func (init void ())
+      (native "LDA.W #$53"
+              "STA.B $00"
+              "NOP"
+              "NOP"
+              "NOP"
+              "NOP"
+              "NOP"
+              "LDY.W #$1234"
+              "STA.B [$42],Y")
+      (return ()))

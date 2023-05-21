@@ -87,6 +87,7 @@
             (compile-stat* ss lenv)
             (Brl loop)
             (Label done)))]
+    [(Native as) (map (lambda (a) (Code a)) as)]
     [_ (error "not a statement")]))
 
 (define (compile-expr expr lenv)

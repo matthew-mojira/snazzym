@@ -13,6 +13,9 @@
 (struct Pullpc () #:prefab)
 (struct Data8 (data) #:prefab)
 (struct Skip (id o) #:prefab)
+(struct Code (asm) #:prefab) ; native code
+; this code directly already looks like assembly, basically
+; circumvents this whole struct thing
 ;; INSTRUCTIONS
 (struct Adc (x) #:prefab)
 (struct Sbc (x) #:prefab)
@@ -115,6 +118,7 @@
     [(Comment s) (string-append ";" s)]
     [(Data8 s) (string-append "    db " (addr-mode->string s))]
     [(Skip id o) (string-append (~a id) ": skip " (~a o))]
+    [(Code asm) (string-append "    " (~a asm))]
     [(Adc x) (string-append "    ADC" (addr-mode->string x))]
     [(Sbc x) (string-append "    SBC" (addr-mode->string x))]
     [(Cmp x) (string-append "    CMP" (addr-mode->string x))]

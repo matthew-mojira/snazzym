@@ -21,6 +21,7 @@
 ; | Assign id e
 ; | Local bs ss
 ; | While e ss
+; | Native asm
 ; toplevel =
 ; | Func id t as ss
 ; | Global id t
@@ -43,6 +44,7 @@
 (struct Assign (id e)    #:prefab)
 (struct Local  (bs ss)   #:prefab)
 (struct While  (e ss)    #:prefab)
+(struct Native (asm)     #:prefab)
 
 ; (function (id ret-type ()) stuff ...)
 ;                        ^ args list unimplemented
