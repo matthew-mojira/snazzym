@@ -11,8 +11,8 @@
     (begin
       (read-line p)
       (let ([prog (parse (read-all p))])
-        (pretty-print prog)
-        (pretty-print (compile prog))
+;        (pretty-print prog)
+;        (pretty-print (compile prog))
         (type-check prog)
         (printer (compile prog)))
       (close-input-port p))))
