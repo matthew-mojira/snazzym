@@ -1,0 +1,22 @@
+; not a real program, just an idea of what it should look like
+
+; library import
+(import "../file.snm")
+
+; constants
+(define x 12)
+  ; the idea is that they should be substituted directly into the program
+  ; whenever used
+
+; array type
+
+
+; ROM inclusions
+(include tilemap "tilemap.bin")
+
+
+; Biggest needs:
+; - error messages
+; - new type system
+; - organizational moves in the compiler
+; - macro/inlined functions system

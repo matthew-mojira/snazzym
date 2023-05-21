@@ -69,10 +69,10 @@
     ; second, compare actual type of expression with expected
     (if (eq? (typeof-expr expr funcs globs locals) type)
         #t
-        (error "Type error: expected"
-               type
-               "but got"
-               (typeof-expr expr funcs globs locals)))))
+        (error (string-appen "Type error: expected "
+                             (~a type)
+                             " but got "
+                             (~a (typeof-expr expr funcs globs locals)))))))
 
 (define (typeof-expr expr funcs globs locals)
   (match expr
@@ -89,11 +89,13 @@
     [(Void) 'void]))
 
 (define (type-check-call id es funcs globs locals)
-  (match-let ([(Func _ _ as ss) (lookup-func id funcs)])
-    (if (= (length as) (length es))
-        (for ([a as] [e es])
-          (type-check-expr e (cdr a) funcs globs locals))
-        (error "Arity mismatch"))))
+  (match (lookup-func id funcs)
+    [(Func _ _ as ss)
+     (if (= (length as) (length es))
+         (for ([a as] [e es])
+           (type-check-expr e (cdr a) funcs globs locals))
+         (error "Arity mismatch"))]
+    [_ (error "Unrecognized function:" id)]))
 
 (define (typeof-var id globs locals)
   ; first, look up local variables
@@ -106,4 +108,4 @@
                         [_ #f])
                       globs)
           [(Global _ t) t]
-          [_ (error "Failed lookup")]))))
+          [_ (error "Failed lookup" id)]))))
