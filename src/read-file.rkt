@@ -17,7 +17,7 @@
     (if (eof-object? line)
         '()
         (match line
-          [(list 'include f2) (append (read-file f2) (read-lines file))]
+          [(list 'import f2) (append (read-file f2) (read-lines file))]
           ; please don't do a circular inclusion!
           [_ (cons line (read-lines file))]))))
 
