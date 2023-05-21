@@ -39,6 +39,7 @@
      (type-check-expr e (typeof-var id globs locals) funcs globs locals)]
     [(Local bs ss)
      (type-check-stat* ss type funcs globs (append (reverse bs) locals))]
+    ; bug: can define variables of type void locally
     [(While e ss)
      (begin
        (type-check-expr e 'bool funcs globs locals)

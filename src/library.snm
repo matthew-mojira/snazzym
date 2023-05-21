@@ -1,0 +1,10 @@
+#lang snazzym
+
+(import "lib/con.snm")
+
+(func (main void ()) (return ()))
+(func (vblank void ())
+  (con/get-inputs)
+  (return ()))
+(func (init void ())
+  (return ()))

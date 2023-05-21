@@ -1,6 +1,7 @@
 #lang snazzym
 
-(include "include2.snm")
+(import "include2.snm")
+(include gfx "graphics.bin")
 
 (func (main void ()) (return ()))
 (func (vblank void ()) (return ()))

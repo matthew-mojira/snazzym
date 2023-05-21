@@ -7,13 +7,15 @@
          "local.rkt")
 
 (define (compile progs)
-  (seq (make-global-list progs) (flatten (map compile-top-level progs))))
+  (seq (make-global-list progs)
+       (make-include-list progs)
+       (flatten (map compile-top-level progs))))
 
 (define (compile-top-level prog)
   (match prog
     [(Func id _ as ss) ; args not handled
      (seq (Comment (~a id))
-          (Label (~a id))
+          (Label (symbol->label id))
           (compile-stat* ss (cons '(#f . long) (reverse as))))]
     [_ '()]))
 
@@ -63,7 +65,7 @@
           (let ([offset (lookup-local id lenv)])
             (if offset
                 (Sta (Stk offset)) ; local
-                (Sta (Long id)))) ; not local? must be global
+                (Sta (Long (symbol->label id))))) ; not local? must be global
           ; SHOULD OPTIMIZE LONG!!
           )]
     ; also, need different schemes of storage based on type eventually
@@ -100,7 +102,7 @@
      (let ([offset (lookup-local id lenv)])
        (if offset
            (Lda (Stk offset)) ; local
-           (Lda (Long id))))] ; not local? must be global
+           (Lda (Long (symbol->label id)))))] ; not local? must be global
     ; SHOULD OPTIMIZE LONG!!
     [(BoolOp1 op e)
      (seq (compile-expr e lenv)
@@ -173,7 +175,7 @@
 ; result)
 (define (compile-call id as lenv)
   (seq (compile-expr* as lenv)
-       (Jsl (~a id))
+       (Jsl (symbol->label id))
        (build-list (length as) (const (Ply)))))
 
 (define (compile-expr* es lenv)
@@ -188,7 +190,27 @@
   (seq (Pushpc)
        (Org "$7E0010") ; hardcoded start of global area
        (flatten (map (match-lambda
-                       [(Global id t) (Skip id (type->size t))]
+                       [(Global id t) (Skip (symbol->label id) (type->size t))]
                        [_ '()])
                      globals))
        (Pullpc)))
+
+; dont need to push/pull again, really
+(define (make-include-list progs)
+  (seq (Pushpc)
+       (Org "$C10000") ; hardcoded start of data
+       (flatten (map (match-lambda
+                       [(Include id file)
+                        (seq (Label (symbol->label id)) (Incbin file))]
+                       [_ '()])
+                     progs))
+       (Pullpc)))
+       ; note to self, don't lie about how large the ROM is in the header,
+       ; maybe?
+
+; this will need much more work in the future
+(define (symbol->label id)
+  (let ([replacements (list '("/" . "_") '("-" . "_"))])
+    (foldr (lambda (pair str) (string-replace str (car pair) (cdr pair)))
+           (~a id)
+           replacements)))

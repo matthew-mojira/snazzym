@@ -1,0 +1,27 @@
+#lang snazzym
+
+(global con/con1 int)
+(global con/con2 int)
+(global con/con1ff int)
+(global con/con2ff int)
+
+(func (con/get-inputs void ())
+  (native
+    "SEP   #$20"
+  "- LDA.W HVBJOY"
+    "AND.B #%1"
+    "BNE   -"
+    "REP   #$30"
+    "LDA.W CNTRL1"
+    "TAX"
+    "STA.B con_con1ff"
+    "LDA.B con_con1"
+    "TRB.B con_con1ff"
+    "STX.B con_con1"
+    "LDA.W CNTRL2"
+    "TAX"
+    "STA.B con_con2ff"
+    "LDA.B con_con2"
+    "TRB.B con_con2ff"
+    "STX.B con_con2")
+  (return ()))

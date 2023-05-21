@@ -25,6 +25,7 @@
 ; toplevel =
 ; | Func id t as ss
 ; | Global id t
+; | Include file
 (struct Int    (i)       #:prefab)
 (struct Bool   (b)       #:prefab)
 (struct Call   (id es)   #:prefab)
@@ -50,6 +51,7 @@
 ;                        ^ args list unimplemented
 (struct Func   (id t as ss) #:prefab)
 (struct Global (id t)       #:prefab)
+(struct Include (id file)   #:prefab)
 
 
 (define bool-op1 '(not))
