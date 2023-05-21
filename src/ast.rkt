@@ -20,6 +20,7 @@
 ; | IfElse e ss1 ss2
 ; | Assign id e
 ; | Local bs ss
+; | While e ss
 ; toplevel =
 ; | Func id t as ss
 ; | Global id t
@@ -41,6 +42,7 @@
 (struct IfElse (e s1 s2) #:prefab)
 (struct Assign (id e)    #:prefab)
 (struct Local  (bs ss)   #:prefab)
+(struct While  (e ss)    #:prefab)
 
 ; (function (id ret-type ()) stuff ...)
 ;                        ^ args list unimplemented

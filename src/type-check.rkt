@@ -39,6 +39,10 @@
      (type-check-expr e (typeof-var id globs locals) funcs globs locals)]
     [(Local bs ss)
      (type-check-stat* ss type funcs globs (append (reverse bs) locals))]
+    [(While e ss)
+     (begin
+       (type-check-expr e 'bool funcs globs locals)
+       (type-check-stat* ss type funcs globs locals))]
     [_ #t]))
 
 (define (type-check-expr expr type funcs globs locals)

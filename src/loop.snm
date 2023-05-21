@@ -1,0 +1,12 @@
+#lang snazzym
+
+(func (main void ()) (return ()))
+(func (vblank void ()) (return ()))
+(func (init void ())
+  (local ([x int] [sum int])
+    (set! x 0)
+    (set! sum 0)
+    (while (<= x 100)
+      (set! sum (+ sum x))
+      (set! x (1+ x))))
+  (return ()))

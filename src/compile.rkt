@@ -74,6 +74,19 @@
           (build-list (length bs) (const (Ply))))] ; deallocate
     ; need to change allocation/deallocation strategy when we have
     ; different sized types
+    [(While e ss)
+     (let ([loop (gensym ".loop")]
+           [true (gensym ".looptrue")]
+           [done (gensym ".loopdone")])
+       (seq (Label loop)
+            (compile-expr e lenv)
+            (Cmp (Imm 0)) ; need optimizing away (bool problem!)
+            (Bne true)
+            (Brl done) ; this is a common idiom, and could be optimized
+            (Label true) ; if the statements fit within the limits
+            (compile-stat* ss lenv)
+            (Brl loop)
+            (Label done)))]
     [_ (error "not a statement")]))
 
 (define (compile-expr expr lenv)
