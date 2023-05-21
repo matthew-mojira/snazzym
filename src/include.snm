@@ -1,0 +1,9 @@
+#lang snazzym
+
+(include "include2.snm")
+
+(func (main void ()) (return ()))
+(func (vblank void ()) (return ()))
+(func (init void () )
+      (f 10)
+      (return ()))

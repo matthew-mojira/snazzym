@@ -7,15 +7,23 @@
          "65816.rkt")
 
 (define (main fn)
-  (let ([p (open-input-file fn)])
-    (begin
-      (read-line p)
-      (let ([prog (parse (read-all p))])
-;        (pretty-print prog)
-;        (pretty-print (compile prog))
-        (type-check prog)
-        (printer (compile prog)))
-      (close-input-port p))))
+  (let ([prog (parse (read-file fn))])
+;    (pretty-print prog)
+    (type-check prog)
+    (printer (compile prog))))
 
-(define (read-all p)
-  (let ([r (read p)]) (if (eof-object? r) '() (cons r (read-all p)))))
+(define (read-lines file)
+  (let ([line (read file)])
+    (if (eof-object? line)
+        '()
+        (match line
+          [(list 'include f2) (append (read-file f2) (read-lines file))]
+          ; please don't do a circular inclusion!
+          [_ (cons line (read-lines file))]))))
+
+(define (read-file name)
+  (let ([file (open-input-file name)])
+    (read-line file) ; initial #lang snazzym line of file
+    (let ([lines (read-lines file)])
+      (close-input-port file)
+      lines)))

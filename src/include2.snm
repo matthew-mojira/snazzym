@@ -1,0 +1,4 @@
+#lang snazzym
+
+(func (f int ([x int]))
+      (return x))
