@@ -1,10 +1,14 @@
 #lang snazzym
 
-(global x int)
+
+(func (fibonacci int ([n int]))
+  (if (<= n 1)
+      (return n))
+  (return (+ (fibonacci (1- n)) (fibonacci (- n 2)))))
 
 (func (main void ()) (return ()))
 (func (vblank void ()) (return ()))
-(func (init void
-            ())
-      (set! x 10)
-      (return ()))
+(func (init void ())
+  (local ([x int])
+    (set! x (fibonacci 20)))
+  (return ()))

@@ -52,6 +52,6 @@
 (define bool-op2 '(and or eor))
 (define comp-op1 '())
 (define comp-op2 '(= != > < >= <=))
-(define int-op1 '(<< >> 1+ -1))
+(define int-op1 '(<< >> 1+ 1-))
 (define int-op2 '(+ -))
 

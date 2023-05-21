@@ -35,6 +35,8 @@
     [(If e ss)
      (let ([true (gensym ".iftrue")] [endif (gensym ".endif")])
        (seq (compile-expr e lenv)
+            (Cmp (Imm 0)) ; want to optimize this away such that the previous
+            ; compile expr will always have the flags set appropriately
             (Bne true)
             (Brl endif)
             (Label true)
@@ -45,6 +47,8 @@
            [false (gensym ".iffalse")]
            [endif (gensym ".endif")])
        (seq (compile-expr e lenv)
+            (Cmp (Imm 0)) ; want to optimize this away such that the previous
+            ; compile expr will always have the flags set appropriately
             (Bne true)
             (Brl false)
             (Label true)
@@ -103,7 +107,7 @@
             ['<< (Asl (Acc 1))]
             ['>> (Lsr (Acc 1))]
             ['1+ (Inc (Acc 1))]
-            ['-1 (Dec (Acc 1))]))]
+            ['1- (Dec (Acc 1))]))]
     [(IntOp2 op e1 e2)
      (seq (compile-expr e2 lenv)
           (Pha)
