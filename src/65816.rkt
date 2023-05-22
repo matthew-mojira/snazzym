@@ -240,7 +240,7 @@
 (define (addr-mode->string mode)
   (match mode
     [(Imm n) (string-append ".W #" (~a n))]
-    [(Imm8 n) (string-append "   #" (~a n))]
+    [(Imm8 n) (string-append ".B #" (~a n))]
     [(Abs a) (string-append ".W " (~a a))]
     [(AbsX a) (string-append ".W " (~a a) ",X")]
     [(AbsY a) (string-append ".W " (~a a) ",Y")]

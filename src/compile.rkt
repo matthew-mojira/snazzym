@@ -6,7 +6,8 @@
          "types.rkt"
          "local.rkt"
          "global.rkt"
-         "func.rkt")
+         "func.rkt"
+         "const.rkt")
 
 ; global variables are mutated by call to compile
 ; taking a page out of my language!
@@ -15,17 +16,17 @@
 ; wouldnt dynamic scope be cool??
 (define globs '())
 (define funcs '())
-; todo: need to rethink the compiling of include expressions. they are
+(define consts '())
 ; technically constants, NOT variables...
 ; does this actually get us towards function pointers??
 
 (define (compile progs)
   (set! globs (extract-globs progs))
   (set! funcs (extract-funcs progs))
+  (set! consts (extract-consts progs))
   (seq (make-global-list progs)
        (make-include-list progs)
-       (flatten (map (lambda (p) (compile-top-level p)) progs))))
-; optimize this lambda interior argument
+       (flatten (map compile-top-level progs))))
 
 (define (compile-top-level prog)
   (match prog
@@ -45,6 +46,7 @@
      (seq (compile-expr expr lenv)
           ; NEED TYPE OF UNDERLYING EXPRESSION
           ; this just takes the safe approach and saves everything
+          ; (it doesn't know)
           ; in the future: more interesting types and byte types will
           ; necessitate a rethink of this very much
           (let ([alloc-size (length-local lenv)])
@@ -84,25 +86,30 @@
     [(Call id as) (compile-call id as lenv)]
     [(Assign id e)
      (seq (compile-expr e lenv)
-          (let ([offset (lookup-local id lenv)])
-            (if offset
-                ; local
-                (seq (Sta (Stk offset))
-                     (case (lookup-local-type id lenv)
-                       [(long)
-                        ; to use stack addrsssing, need to send X to A
-                        (seq (Sep (Imm8 #x20))
-                             (Txa)
-                             (Sta (Stk (+ 2 offset)))
-                             (Rep (Imm8 #x20)))]
-                       [else '()]))
-                ; not local? must be global
-                (seq (Sta (Abs (symbol->label id)))
-                     (case (lookup-global-type id globs)
-                       [(long)
-                        (Stx (Abs (string-append (symbol->label id) "+2")))]
-                       ; x 8 bits
-                       [else '()])))))]
+          (cond
+            [(lookup-type id lenv)
+             =>
+             (lambda (t)
+               (let ([offset (lookup-local id lenv)])
+                 (seq (Sta (Stk offset))
+                      (case t
+                        [(long)
+                         ; to use stack addrsssing, need to send X to A
+                         (seq (Sep (Imm8 #x20))
+                              (Txa)
+                              (Sta (Stk (+ 2 offset)))
+                              (Rep (Imm8 #x20)))]
+                        [else '()]))))]
+            [(lookup-type id globs)
+             =>
+             (lambda (t)
+               (seq (Sta (Abs (symbol->label id)))
+                    (case t
+                      [(long)
+                       (Stx (Abs (string-append (symbol->label id) "+2")))]
+                      ; x 8 bits
+                      [else '()])))]
+            [else (error "Assignment invalid")]))]
     [(Local bs ss)
      (seq (move-stack (- (length-local bs))) ; allocate
           (compile-stat* ss (append (reverse bs) lenv)) ; inner statements
@@ -132,23 +139,35 @@
     [(Void) '()]
     [(Call id as) (compile-call id as lenv)]
     [(Var id)
-     (let ([offset (lookup-local id lenv)])
-       (if offset
-           ; local
-           (case (lookup-local-type id lenv)
-             [(long)
-              (seq (Sep (Imm8 #x20))
-                   (Lda (Stk (+ 2 offset)))
-                   (Tax) ; x 8 bits
-                   (Rep (Imm8 #x20))
-                   (Lda (Stk offset)))]
-             [else (Lda (Stk offset))])
-           ; not local? must be global
-           (seq (Lda (Abs (symbol->label id)))
-                (case (lookup-global-type id globs)
-                  [(long) (Ldx (Abs (string-append (symbol->label id) "+2")))]
-                  ; x 8 bits
-                  [else '()]))))]
+     (cond
+       [(lookup-type id lenv)
+        =>
+        (lambda (t)
+          (let ([offset (lookup-local id lenv)])
+            (case t
+              [(long)
+               (seq (Sep (Imm8 #x20))
+                    (Lda (Stk (+ 2 offset)))
+                    (Tax) ; x 8 bits
+                    (Rep (Imm8 #x20))
+                    (Lda (Stk offset)))]
+              [else (Lda (Stk offset))])))]
+       [(lookup-type id globs)
+        =>
+        (lambda (t)
+          (seq (Lda (Abs (symbol->label id)))
+               (case t
+                 [(long) (Stx (Abs (string-append (symbol->label id) "+2")))]
+                 ; x 8 bits
+                 [else '()])))]
+       [(lookup-type id consts)
+        =>
+        (lambda (t)
+          (case t
+            [(long)
+             (seq (Lda (Imm id)) (Ldx (Imm8 (string-append "<:" (~a id)))))]
+            [else (Lda (Imm id))]))]
+       [else (error "Variable invalid")])]
     [(BoolOp1 op e)
      (seq (compile-expr e lenv)
           (match op

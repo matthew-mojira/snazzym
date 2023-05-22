@@ -28,10 +28,10 @@ foo:
     TCS
 ;bar
 bar:
-    SEP   #32
+    SEP.B #32
     LDA.B 6,S
     TAX
-    REP   #32
+    REP.B #32
     LDA.B 4,S
     RTL
 ;main
@@ -42,8 +42,8 @@ vblank:
     RTL
 ;init
 init:
-    LDA.W gfx
-    LDX.W gfx+2
+    LDA.W #gfx
+    LDX.B #<:gfx
     PHX
     PHA
     JSL   bar

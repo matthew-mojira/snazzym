@@ -4,7 +4,7 @@
 (require "ast.rkt"
          "types.rkt")
 
-(define (extract-globs prog)
+(define (extract-consts prog)
   (filter-map (match-lambda
-                [(Global id t) (cons id t)]
+                [(Include id _) (cons id 'long)]
                 [_ #f]) prog))

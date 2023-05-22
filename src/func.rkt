@@ -5,11 +5,10 @@
 
 ; Extract all function definitions from a program
 (define (extract-funcs prog)
-  (match prog
-    [(cons (Func id t as ss) ps) (cons (Func id t as ss) (extract-funcs ps))]
-    [(cons _ ps) (extract-funcs ps)]
-    ['() '()]))
-; use filter!!
+  (filter (match-lambda
+            [(Func _ _ _ _) #t]
+            [_ #f])
+          prog))
 
 (define (lookup-func id funcs)
   (findf (match-lambda
