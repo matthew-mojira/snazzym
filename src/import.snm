@@ -1,6 +1,8 @@
 #lang snazzym
 
-;(import "import2.snm")
+(import "import2.snm")
+(import "lib/dma.snm")
+
 (include gfx "graphics.bin")
 ; what if we try to set! gfx?
 (global ptr long)
@@ -15,11 +17,14 @@
 )
 
 (func (main void ()) (return ()))
-(func (vblank void ()) (return ()))
+(func (vblank void ())
+  (dma/dma-vram gfx #x0 #x1000)
+  (return ()))
+
 (func (init void ())
-      (local ([v void])
-        (set! v (main))
-      )
+;      (local ([v void])
+;        (set! v (main))
+;      )
 ;      (local ([ptr2 long] [x int])
 ;        (set! ptr2 gfx)
 ;        (set! x 10))

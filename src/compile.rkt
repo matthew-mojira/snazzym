@@ -257,7 +257,7 @@
          (seq code
               (case type
                 [(void) '()]
-                [(long) (seq (Pha) (Phx))]
+                [(long) (seq (Phx) (Pha))]
                 [else (Pha)]))))
      ; performing the function call
      (Jsl (symbol->label id))
