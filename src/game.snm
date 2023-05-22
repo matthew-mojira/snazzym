@@ -1,0 +1,26 @@
+#lang snazzym
+
+(import "lib/con.snm")
+(import "lib/dma.snm")
+(import "lib/oam.snm")
+
+(global points int)
+
+(include gfx "graphics.bin")
+
+(func (init void ())
+  (set! points 0)
+  (oam/init)
+  (return ()))
+
+(func (main void ())
+  (if (and (< points 100) (= con/con1ff #x0800))
+    (set! points (1+ points)))
+  (if (and (> points 0) (= con/con1ff #x0400))
+    (set! points (1- points)))
+  (return ()))
+
+(func (vblank void ())
+  (oam/dma)
+  (con/get-inputs)
+  (return ()))

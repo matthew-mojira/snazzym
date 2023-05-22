@@ -23,5 +23,6 @@
     "STA.B con_con2ff"
     "LDA.B con_con2"
     "TRB.B con_con2ff"
-    "STX.B con_con2")
+    "STX.B con_con2"
+    "SEP   #$10")
   (return ()))

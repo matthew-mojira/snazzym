@@ -1,0 +1,36 @@
+#lang snazzym
+
+(array oam/table byte 544)
+
+(func (oam/init void ())
+  (return ()))
+
+(func (oam/dma void ())
+  (native
+    "STZ.W OAMADD"
+    "LDX.B #OAMDATA"
+    "STX.W DMAREG"
+    "LDX.B #(!DMA_AtoB|!DMA_ABusInc|!DMA_2Byte1Addr)"
+    "STX.W DMAPARAM"
+    "LDA.W #oam_table"
+    "LDX.B #<:oam_table"
+    "STA.W DMAADDR"
+    "STX.W DMAADDR+2"
+    "LDA.W #544"
+    "STA.W DMACNT"
+    "LDX.B #%1"
+    "STX.W MDMAEN")
+  (return ()))
+
+;(func (oam/set-x void ([obj int7] [x int8])))
+;(func (oam/set-y void ([obj int7] [y int8])))
+;(func (oam/set-tile void ([obj int7] [tile int8])))
+;(func (oam/set-prio void ([obj int7] [prio int2])))
+;(func (oam/set-pal void ([obj int7] [pal int3])))
+;(func (oam/set-extra-tile void ([obj int7] [set bool])))
+;(func (oam/set-extra-x void ([obj int7] [x bool])))
+;(func (oam/set-size void ([obj int7] [size bool])))
+;(func (oam/set-horiz void ([obj int7] [flip bool])))
+;(func (oam/set-vert void ([obj int7] [flip bool])))
+;(func (oam/flip-horiz void ([obj int7])))
+;(func (oam/flip-vert void ([obj int7])))

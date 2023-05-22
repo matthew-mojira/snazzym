@@ -63,7 +63,7 @@ F_RESET:
     JSR   clear_memory
     LDA.B #$C0    ; automatic read of the SNES read the first pair of JoyPads
     STA.W WRIO    ; IO Port Write Register
-    LDA.B #$80
+    LDA.B #$81
     STA.W NMITIMEN
 
     REP   #$20    ; 16-bit A

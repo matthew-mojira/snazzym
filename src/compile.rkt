@@ -177,6 +177,7 @@
             ['and (And (Stk 1))]
             ['or (Ora (Stk 1))]
             ['eor (Eor (Stk 1))])
+          (Ply)
           (Ply))] ; think about use of Y register here
     [(IntOp1 op e)
      (seq (compile-expr e lenv)
@@ -192,6 +193,7 @@
           (match op
             ['+ (seq (Clc) (Adc (Stk 1)))]
             ['- (seq (Sec) (Sbc (Stk 1)))])
+          (Ply)
           (Ply))] ; think about use of Y register here
     ; idea: get rid of boolean type altogether and move these comparisons
     ; directly into the if statement (or provide a compiler optimization if
@@ -220,6 +222,7 @@
             (Label true) ; true case
             (Lda (Imm 1))
             (Label end)
+            (Ply)
             (Ply)))] ; think about use of Y register here
     ))
 
