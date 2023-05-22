@@ -105,8 +105,8 @@
     (if local
         (cdr local)
         (match (findf (match-lambda
-                        [(Global idg t) (if (eq? id idg) t #f)]
+                        [(cons idg t) (if (eq? id idg) t #f)]
                         [_ #f])
                       globs)
-          [(Global _ t) t]
+          [(cons _ t) t]
           [_ (error "Failed lookup" id)]))))

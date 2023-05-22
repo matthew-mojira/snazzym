@@ -1,0 +1,28 @@
+#lang snazzym
+
+(func (dma/dma-vram void ([src long] [dest int] [size int]))
+  (native
+    "SEP   #$10" ; 8bit XY
+    ; VRAM register setup
+    "LDX.B #!VINC_IncBy1" ; 1 byte increment for each write of VRAM
+    "LDA.B 3,S" ; dest
+    "STA.W VMADD"
+    ; DMA register setup
+    "LDX.B #VMDATA"
+    "STX.W DMAREG"
+    "LDA.B 5,S" ; size
+    "STA.W DMACNT"
+    "LDA.B 7,S" ; src
+    "STA.W DMAADDR"
+    "LDA.B 9,S" ; src<<16
+    "TAX"
+    "STX.W DMAADDR+2"
+    "LDX.B #(!DMA_AtoB|!DMA_ABusInc|!DMA_2Byte2Addr)"
+    "STX.W DMAPARAM"
+    ; start the transfer!
+    "LDX.B #!Ch0"
+    "STX.W MDMAEN"
+    ; done
+    "REP   #$10") ; 16bit XY
+  (return ())
+)

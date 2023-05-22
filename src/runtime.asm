@@ -66,7 +66,8 @@ F_RESET:
     LDA.B #$80
     STA.W NMITIMEN
 
-    REP   #$30    ; 16-bit AXY
+    REP   #$20    ; 16-bit A
+    SEP   #$10    ; 8-bit XY
 
     JSL   init    ; COMPILED CODE: INITIALIZATION ROUTINES
 

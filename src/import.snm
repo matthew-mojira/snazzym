@@ -1,22 +1,25 @@
-; not a real program, just an idea of what it should look like
+#lang snazzym
 
-; library import
-(import "../file.snm")
+;(import "import2.snm")
+(include gfx "graphics.bin")
+; what if we try to set! gfx?
+(global ptr long)
 
-; constants
-(define x 12)
-  ; the idea is that they should be substituted directly into the program
-  ; whenever used
+(func (foo void ([x int] [y bool] [z long]))
+  (local ([a int] [b bool] [c long])
+    (return ()))
+)
 
-; array type
+(func (bar long ([x long]))
+  (return x)
+)
 
-
-; ROM inclusions
-(include tilemap "tilemap.bin")
-
-
-; Biggest needs:
-; - error messages
-; - new type system
-; - organizational moves in the compiler
-; - macro/inlined functions system
+(func (main void ()) (return ()))
+(func (vblank void ()) (return ()))
+(func (init void ())
+;      (local ([ptr long])
+;        (set! ptr gfx))
+;      (f 10)
+;      (foo 10 #f gfx)
+      (set! ptr (bar gfx))
+      (return ()))

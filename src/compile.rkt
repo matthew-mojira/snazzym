@@ -4,19 +4,36 @@
 (require "ast.rkt"
          "65816.rkt"
          "types.rkt"
-         "local.rkt")
+         "local.rkt"
+         "global.rkt"
+         "func.rkt")
+
+; global variables are mutated by call to compile
+; taking a page out of my language!
+; basically saves us the trouble from having to pass it around, since the global
+; variables and defined functions will never change (I hope)
+; wouldnt dynamic scope be cool??
+(define globs '())
+(define funcs '())
+; todo: need to rethink the compiling of include expressions. they are
+; technically constants, NOT variables...
+; does this actually get us towards function pointers??
 
 (define (compile progs)
+  (set! globs (extract-globs progs))
+  (set! funcs (extract-funcs progs))
   (seq (make-global-list progs)
        (make-include-list progs)
-       (flatten (map compile-top-level progs))))
+       (flatten (map (lambda (p) (compile-top-level p)) progs))))
+; optimize this lambda interior argument
 
 (define (compile-top-level prog)
   (match prog
     [(Func id _ as ss) ; args not handled
      (seq (Comment (~a id))
           (Label (symbol->label id))
-          (compile-stat* ss (cons '(#f . long) (reverse as))))]
+          (compile-stat* ss (cons '(#f . ret) (reverse as))))]
+    ; note use of ret here as a stopping indicator for the lookup
     [_ '()]))
 
 (define (compile-stat* stats lenv)
@@ -26,13 +43,18 @@
   (match stat
     [(Return expr) ; need to deallocate any remaining local variables bound
      (seq (compile-expr expr lenv)
-          (build-list (length-local lenv) (const (Ply)))
-          ; this is just a basic fix. in the future, lenv might contain
-          ; parameters which are put on the stack before the return value (and
-          ; thus shouldn't be pulled off the stack)
-          ; LENGTH-LOCAL DOES THIS!?
-          ; also, we might want processor flags from the expression to be
-          ; preserved
+          ; NEED TYPE OF UNDERLYING EXPRESSION
+          ; this just takes the safe approach and saves everything
+          ; in the future: more interesting types and byte types will
+          ; necessitate a rethink of this very much
+          (let ([alloc-size (length-local lenv)])
+            (if (zero? alloc-size)
+                '() ; no need to deallocate
+                (seq (Txy)
+                     (Sta (Stk (sub1 alloc-size)))
+                     (move-stack (- alloc-size 2))
+                     (Tyx)
+                     (Pla))))
           (Rtl))]
     [(If e ss)
      (let ([true (gensym ".iftrue")] [endif (gensym ".endif")])
@@ -64,18 +86,29 @@
      (seq (compile-expr e lenv)
           (let ([offset (lookup-local id lenv)])
             (if offset
-                (Sta (Stk offset)) ; local
-                (Sta (Long (symbol->label id))))) ; not local? must be global
-          ; SHOULD OPTIMIZE LONG!!
-          )]
-    ; also, need different schemes of storage based on type eventually
+                ; local
+                (seq (Sta (Stk offset))
+                     (case (lookup-local-type id lenv)
+                       [(long)
+                        ; to use stack addrsssing, need to send X to A
+                        (seq (Sep (Imm8 #x20))
+                             (Txa)
+                             (Sta (Stk (+ 2 offset)))
+                             (Rep (Imm8 #x20)))]
+                       [else '()]))
+                ; not local? must be global
+                (seq (Sta (Abs (symbol->label id)))
+                     (case (lookup-global-type id globs)
+                       [(long)
+                        (Stx (Abs (string-append (symbol->label id) "+2")))]
+                       ; x 8 bits
+                       [else '()])))))]
     [(Local bs ss)
-     (seq (Lda (Imm 0)) ; nice initialization
-          (build-list (length bs) (const (Pha))) ; allocate
+     (seq (move-stack (- (length-local bs))) ; allocate
           (compile-stat* ss (append (reverse bs) lenv)) ; inner statements
-          (build-list (length bs) (const (Ply))))] ; deallocate
-    ; need to change allocation/deallocation strategy when we have
-    ; different sized types
+          (move-stack (length-local bs)))] ; deallocate
+    ; note the use of `length-local` is a bit different from how it was
+    ; originally designed
     [(While e ss)
      (let ([loop (gensym ".loop")]
            [true (gensym ".looptrue")]
@@ -101,9 +134,21 @@
     [(Var id)
      (let ([offset (lookup-local id lenv)])
        (if offset
-           (Lda (Stk offset)) ; local
-           (Lda (Long (symbol->label id)))))] ; not local? must be global
-    ; SHOULD OPTIMIZE LONG!!
+           ; local
+           (case (lookup-local-type id lenv)
+             [(long)
+              (seq (Sep (Imm8 #x20))
+                   (Lda (Stk (+ 2 offset)))
+                   (Tax) ; x 8 bits
+                   (Rep (Imm8 #x20))
+                   (Lda (Stk offset)))]
+             [else (Lda (Stk offset))])
+           ; not local? must be global
+           (seq (Lda (Abs (symbol->label id)))
+                (case (lookup-global-type id globs)
+                  [(long) (Ldx (Abs (string-append (symbol->label id) "+2")))]
+                  ; x 8 bits
+                  [else '()]))))]
     [(BoolOp1 op e)
      (seq (compile-expr e lenv)
           (match op
@@ -173,18 +218,45 @@
 ; then calls: putting the return address at the top
 ; once the call is complete, deallocate values (leave accumulator with
 ; result)
+; note to self: should also make a compile-call version when the call is a
+; statementt, because then we are safe to throw away the return value during
+; the deallocation process
 (define (compile-call id as lenv)
-  (seq (compile-expr* as lenv)
-       (Jsl (symbol->label id))
-       (build-list (length as) (const (Ply)))))
-
-(define (compile-expr* es lenv)
-  (match es
-    ['() '()]
-    [(cons e es)
-     (seq (compile-expr e lenv)
-          (Pha)
-          (compile-expr* es (cons '(#f . #f) lenv)))]))
+  (match-let ([(Func _ t ts _) (lookup-func id funcs)])
+    (seq ; putting arguments on the stack
+     ; if empty, for/list should yield empty list
+     (for/list ([arg as] [type (map cdr ts)]) ; cdr is type
+       (let ([code (compile-expr arg lenv)])
+         (set! lenv (cons '(#f . #f) lenv)) ; functional features are gone
+         (seq code
+              (case type
+                [(long) (Phx)]
+                [else '()])
+              (Pha))))
+     ; performing the function call
+     (Jsl (symbol->label id))
+     ; deallocating argument space
+     (let ([alloc-size (length-local ts)])
+       (if (empty? as)
+           '() ; no need to deallocate
+           (case t
+             [(void) (move-stack alloc-size)] ; no need to save
+             [(long)
+              (seq (Txy)
+                   (Sta (Stk (sub1 alloc-size)))
+                   (move-stack (- alloc-size 2))
+                   (Tyx)
+                   (Pla))]
+             [else
+              (seq (Sta (Stk (sub1 alloc-size)))
+                   (move-stack (- alloc-size 2))
+                   (Pla))])))
+     ; an ingenious optimization: the accumulator is saved on the stack that
+     ; we are
+     ; eliminating, so we save it on the stack at a point and deallocate 2 fewer
+     ; bytes so we can pull it at the end
+     ; danger: what if we have byte-sized types eventually?
+     )))
 
 (define (make-global-list globals)
   (seq (Pushpc)
@@ -205,8 +277,14 @@
                        [_ '()])
                      progs))
        (Pullpc)))
-       ; note to self, don't lie about how large the ROM is in the header,
-       ; maybe?
+; note to self, don't lie about how large the ROM is in the header,
+; maybe?
+
+; this is inlined for every time it is called!
+; idea: in certain places this could be *very* optimized
+; preserving the regisets is up to the user
+(define (move-stack bytes)
+  (seq (Tsc) (Clc) (Adc (Imm bytes)) (Tcs)))
 
 ; this will need much more work in the future
 (define (symbol->label id)
