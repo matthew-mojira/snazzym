@@ -5,3 +5,8 @@ compiled/
 *.bak
 \#*
 .\#*
+*.asm
+!runtime.asm
+!registers.asm
+*.sym
+*.sfc
