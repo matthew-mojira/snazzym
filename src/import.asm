@@ -42,19 +42,13 @@ vblank:
     RTL
 ;init
 init:
-    LDA.W #gfx
-    LDX.B #<:gfx
-    PHX
-    PHA
-    JSL   bar
-    TXY
-    STA.B 2,S
     TSC
     CLC
-    ADC.W #1
+    ADC.W #0
     TCS
-    TYX
-    PLA
-    STA.W ptr
-    STX.W ptr+2
+    JSL   main
+    TSC
+    CLC
+    ADC.W #0
+    TCS
     RTL

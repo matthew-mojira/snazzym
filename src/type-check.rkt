@@ -22,8 +22,6 @@
 (define (type-check-top-level prog)
   (match prog
     [(Func _ t bs ss) (type-check-stat* ss t (reverse bs))]
-    [(Global _ 'void) (error "Variable defined of type void")]
-    ; hackfix!!
     [_ #t]))
 
 (define (type-check-stat* ss type locals)

@@ -2,17 +2,22 @@
 
 (global z int)
 
+(func (foo void ([x void]))
+  (return x)
+)
+
 (func (main void ()) (return ()))
 (func (vblank void ()) (return ()))
-(func (init void
-            ())
-      (local ([x int] [y bool])
-             (set! x 10)
-             (set! y #t)
-             (if y
-                 (local ([a int])
-                        (set! a x)
-                        (set! y (not (eor y (= a 25))))
-                        (set! z (+ a x))))
-             (return ()))
-      (return ()))
+(func (init void ())
+  (local ([g void])
+    (foo g))
+;  (local ([x int] [y bool])
+;    (set! x 10) 
+;    (set! y #t)
+;    (if y
+;      (local ([a int])
+;        (set! a x)
+;        (set! y (not (eor y (= a 25))))
+;        (set! z (+ a x))))
+;        (return ()))
+    (return ()))
