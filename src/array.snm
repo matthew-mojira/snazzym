@@ -1,0 +1,10 @@
+#lang snazzym
+
+(array a int 12)
+
+(func (main void ()) (return ()))
+(func (vblank void ()) (return ()))
+(func (init void ())
+
+    (return ()))
+

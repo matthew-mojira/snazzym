@@ -24,8 +24,11 @@
   (set! globs (extract-globs progs))
   (set! funcs (extract-funcs progs))
   (set! consts (extract-consts progs))
-  (seq (make-global-list progs)
+  (seq (Pushpc)
+       (make-global-list progs)
        (make-include-list progs)
+       (make-array-list progs)
+       (Pullpc)
        (flatten (map compile-top-level progs))))
 
 (define (compile-top-level prog)
@@ -62,7 +65,6 @@
      (let ([true (gensym ".iftrue")] [endif (gensym ".endif")])
        (seq (compile-expr e lenv)
             (Cmp (Imm 0)) ; want to optimize this away such that the previous
-            ; compile expr will always have the flags set appropriately
             (Bne true)
             (Brl endif)
             (Label true)
@@ -74,7 +76,6 @@
            [endif (gensym ".endif")])
        (seq (compile-expr e lenv)
             (Cmp (Imm 0)) ; want to optimize this away such that the previous
-            ; compile expr will always have the flags set appropriately
             (Bne true)
             (Brl false)
             (Label true)
@@ -88,29 +89,25 @@
      (seq (compile-expr e lenv)
           (cond
             [(lookup-type id lenv)
-             =>
-             (lambda (t)
-               (let ([offset (lookup-local id lenv)])
-                 (case t
-                   [(void) '()]
-                   [(long)
-                    ; to use stack addrsssing, need to send X to A
-                    (seq (Sta (Stk offset))
-                         (Sep (Imm8 #x20))
-                         (Txa)
-                         (Sta (Stk (+ 2 offset)))
-                         (Rep (Imm8 #x20)))]
-                   [else (Sta (Stk offset))])))]
-            [(lookup-type id globs)
-             =>
-             (lambda (t)
-               (case t
+             (let ([offset (lookup-local id lenv)])
+               (case (lookup-type id lenv)
                  [(void) '()]
                  [(long)
-                  (seq (Sta (Abs (symbol->label id)))
-                       (Stx (Abs (string-append (symbol->label id) "+2"))))]
-                 ; x 8 bits
-                 [else (Sta (Abs (symbol->label id)))]))]
+                  ; to use stack addrsssing, need to send X to A
+                  (seq (Sta (Stk offset))
+                       (Sep (Imm8 #x20))
+                       (Txa)
+                       (Sta (Stk (+ 2 offset)))
+                       (Rep (Imm8 #x20)))]
+                 [else (Sta (Stk offset))]))]
+            [(lookup-type id globs)
+             (case (lookup-type id globs)
+               [(void) '()]
+               [(long)
+                (seq (Sta (Abs (symbol->label id)))
+                     (Stx (Abs (string-append (symbol->label id) "+2"))))]
+               ; x 8 bits
+               [else (Sta (Abs (symbol->label id)))])]
             [else (error "Assignment invalid")]))]
     [(Local bs ss)
      (seq (move-stack (- (length-local bs))) ; allocate
@@ -143,37 +140,30 @@
     [(Var id)
      (cond
        [(lookup-type id lenv)
-        =>
-        (lambda (t)
-          (let ([offset (lookup-local id lenv)])
-            (case t
-              [(void) '()]
-              [(long)
-               (seq (Sep (Imm8 #x20))
-                    (Lda (Stk (+ 2 offset)))
-                    (Tax) ; x 8 bits
-                    (Rep (Imm8 #x20))
-                    (Lda (Stk offset)))]
-              [else (Lda (Stk offset))])))]
+        (let ([offset (lookup-local id lenv)])
+          (case (lookup-type id lenv)
+            [(void) '()]
+            [(long)
+             (seq (Sep (Imm8 #x20))
+                  (Lda (Stk (+ 2 offset)))
+                  (Tax) ; x 8 bits
+                  (Rep (Imm8 #x20))
+                  (Lda (Stk offset)))]
+            [else (Lda (Stk offset))]))]
        [(lookup-type id globs)
-        =>
-        (lambda (t)
-          (case t
-            [(void) '()]
-
-            [(long)
-             (seq (Lda (Abs (symbol->label id)))
-                  (Stx (Abs (string-append (symbol->label id) "+2"))))]
-            ; x 8 bits
-            [else (Lda (Abs (symbol->label id)))]))]
+        (case (lookup-type id globs)
+          [(void) '()]
+          [(long)
+           (seq (Lda (Abs (symbol->label id)))
+                (Stx (Abs (string-append (symbol->label id) "+2"))))]
+          ; x 8 bits
+          [else (Lda (Abs (symbol->label id)))])]
        [(lookup-type id consts)
-        =>
-        (lambda (t)
-          (case t
-            [(void) '()]
-            [(long)
-             (seq (Lda (Imm id)) (Ldx (Imm8 (string-append "<:" (~a id)))))]
-            [else (Lda (Imm id))]))]
+        (case (lookup-type id consts)
+          [(void) '()]
+          [(long)
+           (seq (Lda (Imm id)) (Ldx (Imm8 (string-append "<:" (~a id)))))]
+          [else (Lda (Imm id))])]
        [else (error "Variable invalid")])]
     [(BoolOp1 op e)
      (seq (compile-expr e lenv)
@@ -285,26 +275,29 @@
      )))
 
 (define (make-global-list globals)
-  (seq (Pushpc)
-       (Org "$7E0010") ; hardcoded start of global area
+  (seq (Org "$7E0010") ; hardcoded start of global area
        (flatten (map (match-lambda
                        [(Global id t) (Skip (symbol->label id) (type->size t))]
                        [_ '()])
-                     globals))
-       (Pullpc)))
+                     globals))))
 
-; dont need to push/pull again, really
 (define (make-include-list progs)
-  (seq (Pushpc)
-       (Org "$C10000") ; hardcoded start of data
+  (seq (Org "$C10000") ; hardcoded start of data
        (flatten (map (match-lambda
                        [(Include id file)
                         (seq (Label (symbol->label id)) (Incbin file))]
                        [_ '()])
-                     progs))
-       (Pullpc)))
+                     progs))))
 ; note to self, don't lie about how large the ROM is in the header,
 ; maybe?
+
+(define (make-array-list progs)
+  (seq (Org "$7E2000") ; hardcoded start of data
+       (flatten
+        (map (match-lambda
+               [(Array id t l) (Skip (symbol->label id) (* (type->size t) l))]
+               [_ '()])
+             progs))))
 
 ; this is inlined for every time it is called!
 ; idea: in certain places this could be *very* optimized

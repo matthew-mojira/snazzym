@@ -7,4 +7,6 @@
 (define (extract-consts prog)
   (filter-map (match-lambda
                 [(Include id _) (cons id 'long)]
-                [_ #f]) prog))
+                [(Array id _ _) (cons id 'long)]
+                [_ #f])
+              prog))

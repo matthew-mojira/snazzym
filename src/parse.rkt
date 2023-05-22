@@ -18,7 +18,8 @@
                 ps)
            (parse-stat* ss))]
     [(list 'global id t) (Global id t)]
-    [(list 'include id s) (Include id s)]))
+    [(list 'include id s) (Include id s)]
+    [(list 'array id t l) (Array id t l)]))
 
 (define (parse-stat* stats)
   (map parse-stat stats))
