@@ -39,39 +39,37 @@
      (type-check-stat* s1 type locals)
      (type-check-stat* s2 type locals)]
     [(Call id es) (type-check-call id es locals)]
-    [(Assign id e) (type-check-expr e (typeof-var id locals) locals)]
+    [(Assign id e) (type-check-expr e (typeof-var-mut id locals) locals)]
+    [(or (Increment id) (Decrement id) (ZeroOut id))
+     (if (eq? (typeof-var-mut id locals) 'int)
+         #t
+         (error "Type error: operation not on an integer variable"))]
     [(Local bs ss) (type-check-stat* ss type (append (reverse bs) locals))]
-    ; bug: can define variables of type void locally
     [(While e ss)
      (type-check-expr e 'bool locals)
      (type-check-stat* ss type locals)]
     [_ #t]))
 
 (define (type-check-expr expr type locals)
-  (begin
-    ; first, do type checking of any subexpressions
-    (match expr
-      [(Call id es) (type-check-call id es locals)]
-      [(BoolOp1 _ e) (type-check-expr e 'bool locals)]
-      [(BoolOp2 _ e1 e2)
-       (type-check-expr e1 'bool locals)
-       (type-check-expr e2 'bool locals)]
-      [(CompOp1 _ e) (type-check-expr e 'int locals)]
-      [(CompOp2 _ e1 e2)
-       (type-check-expr e1 'int locals)
-       (type-check-expr e2 'int locals)]
-      [(IntOp1 _ e) (type-check-expr e 'int locals)]
-      [(IntOp2 _ e1 e2)
-       (type-check-expr e1 'int locals)
-       (type-check-expr e2 'int locals)]
-      [_ #t])
-    ; second, compare actual type of expression with expected
-    (if (eq? (typeof-expr expr locals) type)
-        #t
-        (error (string-append "Type error: expected "
-                              (~a type)
-                              " but got "
-                              (~a (typeof-expr expr locals)))))))
+  ; first, do type checking of any subexpressions
+  (match expr
+    [(Call id es) (type-check-call id es locals)]
+    [(BoolOp1 _ e) (type-check-expr e 'bool locals)]
+    [(BoolOp2 _ e1 e2)
+     (type-check-expr e1 'bool locals)
+     (type-check-expr e2 'bool locals)]
+    [(or (CompOp1 _ e) (IntOp1 _ e)) (type-check-expr e 'int locals)]
+    [(or (CompOp2 _ e1 e2) (IntOp2 _ e1 e2))
+     (type-check-expr e1 'int locals)
+     (type-check-expr e2 'int locals)]
+    [_ #t])
+  ; second, compare actual type of expression with expected
+  (if (eq? (typeof-expr expr locals) type)
+      #t
+      (error (string-append "Type error: expected "
+                            (~a type)
+                            " but got "
+                            (~a (typeof-expr expr locals))))))
 
 (define (typeof-expr expr locals)
   (match expr
@@ -93,7 +91,7 @@
      (if (= (length as) (length es))
          (for ([a as] [e es])
            (type-check-expr e (cdr a) locals))
-         (error "Arity mismatch"))]
+         (error "Arity mismatch: expected" (length as) "but got" (length es)))]
     [_ (error "Unrecognized function:" id)]))
 
 (define (typeof-var id locals)
@@ -101,4 +99,10 @@
     [(lookup-type id locals)]
     [(lookup-type id globs)]
     [(lookup-type id consts)]
-    [else (error "Failed lookup:" id)]))
+    [else (error "Unrecognized identifier:" id)]))
+
+(define (typeof-var-mut id locals)
+  (cond
+    [(lookup-type id locals)]
+    [(lookup-type id globs)]
+    [else (error "Unrecognized identifier:" id)]))

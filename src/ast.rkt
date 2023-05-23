@@ -19,6 +19,9 @@
 ; | If e ss
 ; | IfElse e ss1 ss2
 ; | Assign id e
+; | Increment id
+; | Decrement id
+; | ZeroOut id
 ; | Local bs ss
 ; | While e ss
 ; | Native asm
@@ -43,7 +46,12 @@
 (struct Return (e)       #:prefab)
 (struct If     (e ss)    #:prefab)
 (struct IfElse (e s1 s2) #:prefab)
+
 (struct Assign (id e)    #:prefab)
+(struct Increment (id)   #:prefab)
+(struct Decrement (id)   #:prefab)
+(struct ZeroOut   (id)   #:prefab)
+
 (struct Local  (bs ss)   #:prefab)
 (struct While  (e ss)    #:prefab)
 (struct Native (asm)     #:prefab)

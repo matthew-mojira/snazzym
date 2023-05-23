@@ -109,6 +109,27 @@
                ; x 8 bits
                [else (Sta (Abs (symbol->label id)))])]
             [else (error "Assignment invalid")]))]
+    [(Increment id)
+     (cond
+       [(lookup-type id lenv)
+        (let ([offset (lookup-local id lenv)])
+          (seq (Lda (Stk offset)) (Inc) (Sta (Stk offset))))]
+       ; can we ensure global variables of type int can always work with abs?
+       [(lookup-type id globs) (Inc (Abs (symbol->label id)))])]
+    [(Decrement id)
+     (cond
+       [(lookup-type id lenv)
+        (let ([offset (lookup-local id lenv)])
+          (seq (Lda (Stk offset)) (Dec) (Sta (Stk offset))))]
+       ; can we ensure global variables of type int can always work with abs?
+       [(lookup-type id globs) (Dec (Abs (symbol->label id)))])]
+    [(ZeroOut id)
+     (cond
+       [(lookup-type id lenv)
+        (let ([offset (lookup-local id lenv)])
+          (seq (Lda (Imm 0)) (Sta (Stk offset))))]
+       ; can we ensure global variables of type int can always work with abs?
+       [(lookup-type id globs) (Stz (Abs (symbol->label id)))])]
     [(Local bs ss)
      (seq (move-stack (- (length-local bs))) ; allocate
           (compile-stat* ss (append (reverse bs) lenv)) ; inner statements

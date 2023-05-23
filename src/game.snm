@@ -14,8 +14,8 @@
 (func (init void ())
   (ppu/enable-fblank)
   (cgram/clear-cgram)
-  (set! points 0)
-  (set! bg-color 0)
+  (zero! points)
+  (zero! bg-color)
   (oam/init)
   (ppu/disable-fblank)
   (return ()))
@@ -31,9 +31,9 @@
     (set! bg-color #x001F))
 
   (if (and (< points 100) (= con/con1ff #x0800))
-    (set! points (1+ points)))
+    (inc! points))
   (if (and (> points 0) (= con/con1ff #x0400))
-    (set! points (1- points)))
+    (dec! points))
   (return ()))
 
 (func (vblank void ())

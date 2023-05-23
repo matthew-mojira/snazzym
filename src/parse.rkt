@@ -31,6 +31,9 @@
     [(list 'if/else e s1 s2)
      (IfElse (parse-expr e) (map parse-stat s1) (map parse-stat s2))]
     [(list 'set! id e) (Assign id (parse-expr e))]
+    [(list 'inc! id) (Increment id)]
+    [(list 'dec! id) (Decrement id)]
+    [(list 'zero! id) (ZeroOut id)]
     [(list-rest 'local bs ss) (parse-let bs ss)]
     [(list-rest 'while e ss) (While (parse-expr e) (parse-stat* ss))]
     [(list-rest 'native as) (Native as)]
