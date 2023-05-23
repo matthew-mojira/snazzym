@@ -89,6 +89,21 @@
             (compile-stat* ss lenv)
             (Brl loop)
             (Label done)))]
+    [(Cond cs)
+     (let ([done (gensym ".conddone")])
+       (seq (foldr (match-lambda**
+                     [((If p ss) acc)
+                      (let ([true (gensym ".condtrue")]
+                            [next (gensym ".condnext")])
+                        (seq (compile-pred p lenv true done)
+                             (Label true)
+                             (compile-stat* ss lenv)
+                             (Jsl done)
+                             (Label next)
+                             acc))])
+                   '()
+                   cs)
+            (Label done)))]
     [(Assign id e)
      (seq (compile-expr e lenv)
           (cond
@@ -192,7 +207,17 @@
             ['- (seq (Sec) (Sbc (Stk 1)))])
           (Ply)
           (Ply))] ; think about use of Y register here
-    ))
+    [(Ternary p e1 e2)
+     (let ([true (gensym ".terntrue")]
+           [false (gensym ".ternfalse")]
+           [endif (gensym ".endtern")])
+       (seq (compile-pred p lenv true false)
+            (Label true)
+            (compile-expr e1 lenv)
+            (Brl endif)
+            (Label false)
+            (compile-expr e2 lenv)
+            (Label endif)))]))
 
 (define (compile-int int)
   (Lda (Imm int)))

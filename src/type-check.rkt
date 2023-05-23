@@ -38,6 +38,9 @@
      (type-check-pred p locals)
      (type-check-stat* s1 type locals)
      (type-check-stat* s2 type locals)]
+    [(Cond cs)
+     (for ([c cs]) ; the underlying type of c is an If, so use above check
+       (type-check-stat c type locals))]
     [(Call id es) (type-check-call id es locals)]
     [(Assign id e) (type-check-expr e (typeof-var-mut id locals) locals)]
     [(or (Increment id) (Decrement id) (ZeroOut id))
@@ -58,6 +61,10 @@
     [(IntOp2 _ e1 e2)
      (type-check-expr e1 'int locals)
      (type-check-expr e2 'int locals)]
+    [(Ternary p e1 e2)
+     (type-check-pred p locals)
+     (type-check-expr e1 type locals)
+     (type-check-expr e2 type locals)]
     [_ #t])
   ; second, compare actual type of expression with expected
   (if (eq? (typeof-expr expr locals) type)
@@ -76,7 +83,8 @@
     [(CompOp1 _ e) (type-check-expr e 'int locals)]
     [(CompOp2 _ e1 e2)
      (type-check-expr e1 'int locals)
-     (type-check-expr e2 'int locals)]))
+     (type-check-expr e2 'int locals)]
+    [_ #t]))
 
 (define (typeof-expr expr locals)
   (match expr
@@ -85,7 +93,9 @@
     [(IntOp2 _ _ _) 'int]
     [(Call id es) (match-let ([(Func _ t _ _) (lookup-func id funcs)]) t)]
     [(Var id) (typeof-var id locals)]
-    [(Void) 'void]))
+    [(Void) 'void]
+    [(Ternary _ e _) (typeof-expr e locals)]))
+; assumption: both types of ternary operator are the same! (checked above)
 
 (define (type-check-call id es locals)
   (match (lookup-func id funcs)
