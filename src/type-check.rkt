@@ -31,11 +31,11 @@
 (define (type-check-stat stat type locals)
   (match stat
     [(Return e) (type-check-expr e type locals)]
-    [(If e ss)
-     (type-check-expr e 'bool locals)
+    [(If p ss)
+     (type-check-pred p locals)
      (type-check-stat* ss type locals)]
-    [(IfElse e s1 s2)
-     (type-check-expr e 'bool locals)
+    [(IfElse p s1 s2)
+     (type-check-pred p locals)
      (type-check-stat* s1 type locals)
      (type-check-stat* s2 type locals)]
     [(Call id es) (type-check-call id es locals)]
@@ -45,8 +45,8 @@
          #t
          (error "Type error: operation not on an integer variable"))]
     [(Local bs ss) (type-check-stat* ss type (append (reverse bs) locals))]
-    [(While e ss)
-     (type-check-expr e 'bool locals)
+    [(While p ss)
+     (type-check-pred p locals)
      (type-check-stat* ss type locals)]
     [_ #t]))
 
@@ -54,12 +54,8 @@
   ; first, do type checking of any subexpressions
   (match expr
     [(Call id es) (type-check-call id es locals)]
-    [(BoolOp1 _ e) (type-check-expr e 'bool locals)]
-    [(BoolOp2 _ e1 e2)
-     (type-check-expr e1 'bool locals)
-     (type-check-expr e2 'bool locals)]
-    [(or (CompOp1 _ e) (IntOp1 _ e)) (type-check-expr e 'int locals)]
-    [(or (CompOp2 _ e1 e2) (IntOp2 _ e1 e2))
+    [(IntOp1 _ e) (type-check-expr e 'int locals)]
+    [(IntOp2 _ e1 e2)
      (type-check-expr e1 'int locals)
      (type-check-expr e2 'int locals)]
     [_ #t])
@@ -71,14 +67,20 @@
                             " but got "
                             (~a (typeof-expr expr locals))))))
 
+(define (type-check-pred pred locals)
+  (match pred
+    [(BoolOp1 _ p) (type-check-pred p locals)]
+    [(BoolOp2 _ p1 p2)
+     (type-check-pred p1 locals)
+     (type-check-pred p2 locals)]
+    [(CompOp1 _ e) (type-check-expr e 'int locals)]
+    [(CompOp2 _ e1 e2)
+     (type-check-expr e1 'int locals)
+     (type-check-expr e2 'int locals)]))
+
 (define (typeof-expr expr locals)
   (match expr
     [(Int _) 'int]
-    [(Bool _) 'bool]
-    [(BoolOp1 _ _) 'bool]
-    [(BoolOp2 _ _ _) 'bool]
-    [(CompOp1 _ _) 'bool]
-    [(CompOp2 _ _ _) 'bool]
     [(IntOp1 _ _) 'int]
     [(IntOp2 _ _ _) 'int]
     [(Call id es) (match-let ([(Func _ t _ _) (lookup-func id funcs)]) t)]

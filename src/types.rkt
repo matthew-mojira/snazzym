@@ -3,7 +3,6 @@
 (provide (all-defined-out))
 
 (define/match (type->size type)
-  [('bool) 2]
   [('int) 2]
   [('byte) 1]
   [('void) 0]

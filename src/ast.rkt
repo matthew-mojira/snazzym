@@ -4,26 +4,26 @@
 
 ; expr =
 ; | Int i
-; | Bool b
 ; | Call id es
 ; | Var id
-; | BoolOp1 op e
-; | BoolOp2 op e1 e2
 ; | IntOp1 op e
 ; | IntOp2 op e1 e2
+; | Void
+; pred =
+; | BoolOp1 op p
+; | BoolOp2 op p1 p2
 ; | CompOp1 op e
 ; | CompOp2 op e1 e2
-; | Void
 ; stat =
 ; | Return e
-; | If e ss
-; | IfElse e ss1 ss2
+; | If p ss
+; | IfElse p ss1 ss2
 ; | Assign id e
 ; | Increment id
 ; | Decrement id
 ; | ZeroOut id
 ; | Local bs ss
-; | While e ss
+; | While p ss
 ; | Native asm
 ; toplevel =
 ; | Func id t as ss
@@ -31,21 +31,21 @@
 ; | Include file
 ; | Array id type length
 (struct Int    (i)       #:prefab)
-(struct Bool   (b)       #:prefab)
 (struct Call   (id es)   #:prefab)
 (struct Var    (id)      #:prefab)
 (struct Void   ()        #:prefab)
 
-(struct BoolOp1 (op e)     #:prefab)
-(struct BoolOp2 (op e1 e2) #:prefab)
-(struct CompOp1 (op e)     #:prefab)
-(struct CompOp2 (op e1 e2) #:prefab)
 (struct IntOp1  (op e)     #:prefab)
 (struct IntOp2  (op e1 e2) #:prefab)
 
+(struct BoolOp1 (op p)     #:prefab)
+(struct BoolOp2 (op p1 p2) #:prefab)
+(struct CompOp1 (op e)     #:prefab)
+(struct CompOp2 (op e1 e2) #:prefab)
+
 (struct Return (e)       #:prefab)
-(struct If     (e ss)    #:prefab)
-(struct IfElse (e s1 s2) #:prefab)
+(struct If     (p ss)    #:prefab)
+(struct IfElse (p s1 s2) #:prefab)
 
 (struct Assign (id e)    #:prefab)
 (struct Increment (id)   #:prefab)
@@ -53,7 +53,7 @@
 (struct ZeroOut   (id)   #:prefab)
 
 (struct Local  (bs ss)   #:prefab)
-(struct While  (e ss)    #:prefab)
+(struct While  (p ss)    #:prefab)
 (struct Native (asm)     #:prefab)
 
 ; (function (id ret-type ()) stuff ...)
@@ -65,7 +65,7 @@
 
 
 (define bool-op1 '(not))
-(define bool-op2 '(and or eor))
+(define bool-op2 '(and or))
 (define comp-op1 '())
 (define comp-op2 '(= != > < >= <=))
 (define int-op1 '(<< >> 1+ 1-))

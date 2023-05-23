@@ -45,6 +45,7 @@
 
 (define (compile-stat stat lenv)
   (match stat
+    [(Call id as) (compile-call id as lenv)]
     [(Return expr) ; need to deallocate any remaining local variables bound
      (seq (compile-expr expr lenv)
           ; NEED TYPE OF UNDERLYING EXPRESSION
@@ -61,30 +62,33 @@
                      (Tyx)
                      (Pla))))
           (Rtl))]
-    [(If e ss)
+    [(If p ss)
      (let ([true (gensym ".iftrue")] [endif (gensym ".endif")])
-       (seq (compile-expr e lenv)
-            (Cmp (Imm 0)) ; want to optimize this away such that the previous
-            (Bne true)
-            (Brl endif)
+       (seq (compile-pred p lenv true endif)
             (Label true)
             (compile-stat* ss lenv)
             (Label endif)))]
-    [(IfElse e s1 s2)
+    [(IfElse p s1 s2)
      (let ([true (gensym ".iftrue")]
            [false (gensym ".iffalse")]
            [endif (gensym ".endif")])
-       (seq (compile-expr e lenv)
-            (Cmp (Imm 0)) ; want to optimize this away such that the previous
-            (Bne true)
-            (Brl false)
+       (seq (compile-pred p lenv true false)
             (Label true)
             (compile-stat* s1 lenv)
             (Brl endif)
             (Label false)
             (compile-stat* s2 lenv)
             (Label endif)))]
-    [(Call id as) (compile-call id as lenv)]
+    [(While p ss)
+     (let ([loop (gensym ".loop")]
+           [true (gensym ".looptrue")]
+           [done (gensym ".loopdone")])
+       (seq (Label loop)
+            (compile-pred p lenv true done)
+            (Label true)
+            (compile-stat* ss lenv)
+            (Brl loop)
+            (Label done)))]
     [(Assign id e)
      (seq (compile-expr e lenv)
           (cond
@@ -136,26 +140,12 @@
           (move-stack (length-local bs)))] ; deallocate
     ; note the use of `length-local` is a bit different from how it was
     ; originally designed
-    [(While e ss)
-     (let ([loop (gensym ".loop")]
-           [true (gensym ".looptrue")]
-           [done (gensym ".loopdone")])
-       (seq (Label loop)
-            (compile-expr e lenv)
-            (Cmp (Imm 0)) ; need optimizing away (bool problem!)
-            (Bne true)
-            (Brl done) ; this is a common idiom, and could be optimized
-            (Label true) ; if the statements fit within the limits
-            (compile-stat* ss lenv)
-            (Brl loop)
-            (Label done)))]
     [(Native as) (map (lambda (a) (Code a)) as)]
     [_ (error "not a statement")]))
 
 (define (compile-expr expr lenv)
   (match expr
     [(Int i) (compile-int i)]
-    [(Bool b) (compile-bool b)]
     [(Void) '()]
     [(Call id as) (compile-call id as lenv)]
     [(Var id)
@@ -186,20 +176,6 @@
            (seq (Lda (Imm id)) (Ldx (Imm8 (string-append "<:" (~a id)))))]
           [else (Lda (Imm id))])]
        [else (error "Variable invalid")])]
-    [(BoolOp1 op e)
-     (seq (compile-expr e lenv)
-          (match op
-            ['not (Eor (Imm 1))]))]
-    [(BoolOp2 op e1 e2)
-     (seq (compile-expr e1 lenv)
-          (Pha)
-          (compile-expr e2 (cons '(#f . bool) lenv))
-          (match op
-            ['and (And (Stk 1))]
-            ['or (Ora (Stk 1))]
-            ['eor (Eor (Stk 1))])
-          (Ply)
-          (Ply))] ; think about use of Y register here
     [(IntOp1 op e)
      (seq (compile-expr e lenv)
           (match op
@@ -216,35 +192,6 @@
             ['- (seq (Sec) (Sbc (Stk 1)))])
           (Ply)
           (Ply))] ; think about use of Y register here
-    ; idea: get rid of boolean type altogether and move these comparisons
-    ; directly into the if statement (or provide a compiler optimization if
-    ; the expression in the if is just one computation)
-    [(CompOp2 op e1 e2)
-     (let ([true (gensym ".comp_true")] [end (gensym ".comp_end")])
-       (seq (case op
-              [(= != > <=)
-               (seq (compile-expr e1 lenv)
-                    (Pha)
-                    (compile-expr e2 (cons '(#f . int) lenv)))]
-              [(< >=)
-               (seq (compile-expr e2 lenv)
-                    (Pha)
-                    (compile-expr e1 (cons '(#f . int) lenv)))])
-            ; ALERT! COMPARISONS ARE UNSIGNED!!!
-            ; OH NO... SIGNED AND UNSIGNED TYPES??
-            (Cmp (Stk 1))
-            (case op
-              [(=) (Beq true)]
-              [(!=) (Bne true)]
-              [(< >) (Bcc true)]
-              [(>= <=) (Bcs true)])
-            (Lda (Imm 0))
-            (Bra end)
-            (Label true) ; true case
-            (Lda (Imm 1))
-            (Label end)
-            (Ply)
-            (Ply)))] ; think about use of Y register here
     ))
 
 (define (compile-int int)
@@ -297,6 +244,37 @@
      ; bytes so we can pull it at the end
      ; danger: what if we have byte-sized types eventually?
      )))
+
+(define (compile-pred p lenv true false)
+  (match p
+    [(BoolOp1 op p) (compile-pred (BoolOp1 op p) lenv false true)]
+    [(BoolOp2 op p1 p2)
+     (match op
+       ['and
+        (let ([second (gensym ".predand")])
+          (seq (compile-pred p1 lenv second false)
+               (Label second)
+               (compile-pred p2 lenv true false)))]
+       ['or
+        (let ([second (gensym ".predor")])
+          (seq (compile-pred p1 lenv true second)
+               (Label second)
+               (compile-pred p2 lenv true false)))])]
+    [(CompOp2 op e1 e2)
+     (seq (case op
+            [(= != > <=)
+             (seq (compile-expr e1 lenv) (Sta (Zp 0)) (compile-expr e2 lenv))]
+            [(< >=)
+             (seq (compile-expr e2 lenv) (Sta (Zp 0)) (compile-expr e1 lenv))])
+          ; ALERT! COMPARISONS ARE UNSIGNED!!!
+          ; OH NO... SIGNED AND UNSIGNED TYPES??
+          (Cmp (Zp 0)) ; no longer compare on the stack
+          (case op
+            [(=) (Beq true)]
+            [(!=) (Bne true)]
+            [(< >) (Bcc true)]
+            [(>= <=) (Bcs true)])
+          (Brl false))]))
 
 (define (make-global-list globals)
   (seq (Org "$7E0010") ; hardcoded start of global area

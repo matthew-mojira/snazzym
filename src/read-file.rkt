@@ -8,7 +8,7 @@
 
 (define (main fn)
   (let ([prog (parse (read-file fn))])
-;    (pretty-print prog)
+    ;    (pretty-print prog)
     (type-check prog)
     (printer (compile prog))))
 
