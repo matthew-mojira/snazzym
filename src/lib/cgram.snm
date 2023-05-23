@@ -1,0 +1,28 @@
+#lang snazzym
+
+(func (cgram/set-bg-color void ([col int]))
+  (native
+    "SEP   #$20"
+    "STZ.W CGADD"
+    "REP   #$20"
+    "LDA.B 4,S"
+    "SEP   #$20"
+    "STA.W CGDATA"
+    "XBA"
+    "STA.W CGDATA"
+    "REP   #$20")
+  (return ()))
+
+(func (cgram/clear-cgram void ())
+  ; or, use DMA?
+  (native
+    "PHP"
+    "REP   #$10"
+    "SEP   #$20"
+    "STZ.W CGADD"
+    "LDX.W #512"
+  "- STZ.W CGDATA"
+    "DEX"
+    "BPL -"
+    "PLP")
+  (return ()))

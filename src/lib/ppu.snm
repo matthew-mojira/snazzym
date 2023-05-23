@@ -1,0 +1,18 @@
+#lang snazzym
+
+(func (ppu/enable-fblank void ())
+  (native
+    "SEP   #$20"
+    "LDA.B #$80"
+    "STA.W INIDISP"
+    "REP   #$20")
+  (return ()))
+
+; enables full brightness
+(func (ppu/disable-fblank void ())
+  (native
+    "SEP   #$20"
+    "LDA.B #$0F"
+    "STA.W INIDISP"
+    "REP   #$20")
+  (return ()))
