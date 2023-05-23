@@ -272,6 +272,8 @@
 
 (define (compile-pred p lenv true false)
   (match p
+    [(True) (Brl true)]
+    [(False) (Brl false)]
     [(BoolOp1 op p) (compile-pred (BoolOp1 op p) lenv false true)]
     [(BoolOp2 op p1 p2)
      (match op
