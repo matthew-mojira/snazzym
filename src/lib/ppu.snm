@@ -16,3 +16,28 @@
     "STA.W INIDISP"
     "REP   #$20")
   (return ()))
+
+(func (ppu/set-bg-mode void ([mode int]))
+  (native
+    "SEP   #$20"
+    "LDA.B 4,S"
+    "STA.W BGMODE"
+    "REP   #$20")
+  (return ()))
+
+(func (ppu/set-layer-enabled void ([tm int]))
+  (native
+    "SEP   #$20"
+    "LDA.B 4,S"
+    "STA.W TM"
+    "REP   #$20")
+  (return ()))
+
+(func (ppu/set-obsel void ([obsel int]))
+  (native
+    "SEP   #$20"
+    "LDA.B 4,S"
+    "STA.W OBJSEL"
+    "REP   #$20")
+  (return ()))
+

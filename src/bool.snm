@@ -7,19 +7,22 @@
   (zero! pass)
   (zero! fail)
 
-  (cond
-    [(= 2 2)
-      ((set! pass 3)
-       (return 1)
-       (return 2)
-       (return 1))]
-    [(= 5 5)
-      ((set! fail 3)
-       (return 1)
-       (return 2)
-       (return 1))]
+  (if (and true (or false true))
+    (inc! pass))
 
-       )
+;  (cond
+;    [(= 2 2)
+;      ((set! pass 3)
+;       (return 1)
+;       (return 2)
+;       (return 1))]
+;    [(= 5 5)
+;      ((set! fail 3)
+;       (return 1)
+;       (return 2)
+;       (return 1))]
+;
+;       )
 ;    [(= 10 10) ((inc! pass)
 ;      (return 2))])
 ;

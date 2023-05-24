@@ -9,6 +9,10 @@
 (global points int)
 (global bg-color int)
 
+(global pos int)
+(global vel int)
+(global acc int)
+
 (include gfx "graphics.bin")
 
 (func (init void ())
@@ -16,7 +20,17 @@
   (cgram/clear-cgram)
   (zero! points)
   (zero! bg-color)
+
+  (zero! pos)
+  (zero! vel)
+  (set! acc 1)
+
   (oam/init)
+  (oam/set-x 0 30)
+
+  (ppu/set-layer-enabled #x10)
+  (ppu/set-obsel 0)
+  (dma/dma-vram gfx #x0000 #x2000)
   (ppu/disable-fblank)
   (return ()))
 
@@ -34,6 +48,12 @@
     (inc! points))
   (if (and (> points 0) (= con/con1ff #x0400))
     (dec! points))
+
+  (integrate)
+  (local ([adj-y int])
+    (set! adj-y (>> (>> (>> (>> (>> (>> (>> (>> pos)))))))))
+    (oam/set-y 0 adj-y))
+
   (return ()))
 
 (func (vblank void ())
@@ -42,4 +62,10 @@
   (oam/dma)
   (cgram/set-bg-color bg-color)
   (ppu/disable-fblank)
+  (return ()))
+
+
+(func (integrate void ())
+  (set! vel (+ vel acc))
+  (set! pos (+ pos vel))
   (return ()))

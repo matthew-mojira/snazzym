@@ -3,6 +3,25 @@
 (array oam/table byte 544)
 
 (func (oam/init void ())
+  (native
+    ; assumption that the rest of the bytes have been pre-cleared
+    ; in the future we should just do it anyway
+    "PHP"
+    "SEP   #$20"
+    "REP   #$10"
+    "LDX.W #508"
+    "LDA.B #$01"
+    ; initializing table 1
+  "- STA.L oam_table,X"
+    "DEX   #4"
+    "BPL -"
+    ; initializing table 2
+    "LDA.B #%01010101"
+    "LDX.W #31"
+  "- STA.L oam_table+512,X"
+    "DEX"
+    "BPL -"
+    "PLP")
   (return ()))
 
 (func (oam/dma void ())
@@ -22,8 +41,32 @@
     "STX.W MDMAEN")
   (return ()))
 
-;(func (oam/set-x void ([obj int7] [x int8])))
-;(func (oam/set-y void ([obj int7] [y int8])))
+(func (oam/set-x void ([index int] [x int]))
+  (native
+    "PHP"
+    "REP   #$10"
+    "LDA.B 7,S"
+    "LSR   #2"
+    "TAX"
+    "LDA.B 5,S"
+    "SEP   #$20"
+    ; todo code for the 9th bit
+    "STA.L oam_table,X"
+    "PLP")
+  (return ()))
+
+(func (oam/set-y void ([index int] [y int]))
+  (native
+    "PHP"
+    "REP   #$10"
+    "LDA.B 7,S"
+    "LSR   #2"
+    "TAX"
+    "SEP   #$20"
+    "LDA.B 5,S"
+    "STA.L oam_table+1,X"
+    "PLP")
+  (return ()))
 ;(func (oam/set-tile void ([obj int7] [tile int8])))
 ;(func (oam/set-prio void ([obj int7] [prio int2])))
 ;(func (oam/set-pal void ([obj int7] [pal int3])))

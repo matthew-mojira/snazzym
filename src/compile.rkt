@@ -239,7 +239,7 @@
      ; if empty, for/list should yield empty list
      (for/list ([arg as] [type (map cdr ts)]) ; cdr is type
        (let ([code (compile-expr arg lenv)])
-         (set! lenv (cons '(#f . #f) lenv)) ; functional features are gone
+         (set! lenv (cons `(#f . ,type) lenv))
          (seq code
               (case type
                 [(void) '()]
