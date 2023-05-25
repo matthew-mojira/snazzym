@@ -304,9 +304,6 @@
                (compile-pred p2 lenv true false)))])]
     [(CompOp1 op e)
      (seq (compile-expr e lenv)
-          (Cmp (Imm 0)) ; in the future, want to get rid of this
-          ; want processor flags to alwayhs be set correctly from the
-          ; compile-expr
           (match op
             ['zero? (Beq true)]
             ['nonzero? (Bne true)]
