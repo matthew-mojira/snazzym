@@ -197,16 +197,18 @@
             ['<< (Asl (Acc 1))]
             ['>> (Lsr (Acc 1))]
             ['1+ (Inc (Acc 1))]
-            ['1- (Dec (Acc 1))]))]
+            ['1- (Dec (Acc 1))]
+            ['bit-not (Eor (Acc #xFFFF))]))]
     [(IntOp2 op e1 e2)
      (seq (compile-expr e2 lenv)
-          (Pha)
-          (compile-expr e1 (cons '(#f . int) lenv))
+          (Sta (Zp 0))
+          (compile-expr e1 lenv)
           (match op
-            ['+ (seq (Clc) (Adc (Stk 1)))]
-            ['- (seq (Sec) (Sbc (Stk 1)))])
-          (Ply)
-          (Ply))] ; think about use of Y register here
+            ['+ (seq (Clc) (Adc (Zp 0)))]
+            ['- (seq (Sec) (Sbc (Zp 0)))]
+            ['bit-or (Ora (Zp 0))]
+            ['bit-and (And (Zp 0))]
+            ['bit-eor (Eor (Zp 0))]))]
     [(Ternary p e1 e2)
      (let ([true (gensym ".terntrue")]
            [false (gensym ".ternfalse")]
@@ -287,6 +289,17 @@
           (seq (compile-pred p1 lenv true second)
                (Label second)
                (compile-pred p2 lenv true false)))])]
+    [(CompOp1 op e)
+     (seq (compile-expr e lenv)
+          (Cmp (Imm 0)) ; in the future, want to get rid of this
+          ; want processor flags to alwayhs be set correctly from the
+          ; compile-expr
+          (match op
+            ['zero? (Beq true)]
+            ['nonzero? (Bne true)]
+            ['nonneg? (Bpl true)]
+            ['neg? (Bmi true)])
+          (Brl false))]
     [(CompOp2 op e1 e2)
      (seq (case op
             [(= != > <=)

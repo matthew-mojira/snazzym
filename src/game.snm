@@ -9,6 +9,7 @@
 (global points int)
 (global bg-color int)
 
+(global x-pos int)
 (global pos int)
 (global vel int)
 (global acc int)
@@ -23,10 +24,11 @@
 
   (zero! pos)
   (zero! vel)
-  (set! acc 1)
+  (set! acc 16)
+  (set! x-pos 20)
 
   (oam/init)
-  (oam/set-x 0 30)
+  (oam/set-x 1 30)
 
   (ppu/set-layer-enabled #x10)
   (ppu/set-obsel 0)
@@ -35,24 +37,37 @@
   (return ()))
 
 (func (main void ())
-  (if (= con/con1ff #x4000)
+  (if (nonzero? (bit-and con/con1ff #x4000))
     (set! bg-color #x03E0))
-  (if (= con/con1ff #x8000)
+  (if (nonzero? (bit-and con/con1ff #x8000))
     (set! bg-color #x03FF))
-  (if (= con/con1ff #x0040)
+  (if (nonzero? (bit-and con/con1ff #x0040))
     (set! bg-color #x7C00))
-  (if (= con/con1ff #x0080)
+  (if (nonzero? (bit-and con/con1ff #x0080))
     (set! bg-color #x001F))
 
-  (if (and (< points 100) (= con/con1ff #x0800))
+  (if (and (< points 127) (nonzero? (bit-and con/con1ff #x0800)))
     (inc! points))
-  (if (and (> points 0) (= con/con1ff #x0400))
+  (if (and (> points 0) (nonzero? (bit-and con/con1ff #x0400)))
     (dec! points))
 
+  (if (and (< x-pos 240) (nonzero? (bit-and con/con1 #x0100)))
+    (inc! x-pos))
+  (if (and (> x-pos 10) (nonzero? (bit-and con/con1 #x0200)))
+    (dec! x-pos))
+
+  (if (and (= pos #xC000) (nonzero? (bit-and con/con1ff #x2000)))
+    (set! vel -1200))
+
   (integrate)
+  (if (>= pos #xC000)
+    (set! vel #x0000)
+    (set! pos #xC000))
   (local ([adj-y int])
     (set! adj-y (>> (>> (>> (>> (>> (>> (>> (>> pos)))))))))
-    (oam/set-y 0 adj-y))
+    (oam/set-y 1 adj-y))
+  (oam/set-tile 1 points)
+  (oam/set-x 1 x-pos)
 
   (return ()))
 

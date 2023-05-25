@@ -46,28 +46,79 @@
     "PHP"
     "REP   #$10"
     "LDA.B 7,S"
-    "LSR   #2"
+    "ASL   #2"
     "TAX"
     "LDA.B 5,S"
     "SEP   #$20"
-    ; todo code for the 9th bit
     "STA.L oam_table,X"
+    "REP   #$20"
+    ; 9th bit
+    ; get offset in second table
+    "SEP   #$10"
+    "LDA.B 7,S"
+    "LSR   #2"
+    "TAY" ; Y <- offset in hioam
+
+    "SEP   #$20"
+    "LDA.B 6,S"
+    "BEQ   .clear"
+  ".set:"
+    ; get bit mask
+    "LDA.B 7,S"
+    "AND.B #%11"
+    "TAX"
+    "LDA.L .table_set,X"
+    "TYX"
+    "ORA.L oam_table+512,X"
+    "STA.L oam_table+512,X"
     "PLP")
-  (return ()))
+  (return ())
+  (native
+  ".clear:"
+    ; get bit mask
+    "LDA.B 7,S"
+    "AND.B #%11"
+    "TAX"
+    "LDA.L .table_clear,X"
+    "TYX"
+    "AND.L oam_table+512,X"
+    "STA.L oam_table+512,X"
+    "PLP")
+  (return ())
+  (native
+  ".table_set:"
+    "db %00000001, %00000100, %00010000, %01000000"
+  ".table_clear:"
+    "db %11111110, %11111011, %11101111, %10111111"))
 
 (func (oam/set-y void ([index int] [y int]))
   (native
     "PHP"
     "REP   #$10"
     "LDA.B 7,S"
-    "LSR   #2"
+    "ASL   #2"
     "TAX"
     "SEP   #$20"
     "LDA.B 5,S"
     "STA.L oam_table+1,X"
     "PLP")
   (return ()))
-;(func (oam/set-tile void ([obj int7] [tile int8])))
+
+(func (oam/set-tile void ([obj int] [tile int]))
+  (native
+    "PHP"
+    "REP   #$10"
+    "LDA.B 7,S"
+    "ASL   #2"
+    "TAX"
+    "SEP   #$20"
+    "LDA.B 5,S"
+    "STA.L oam_table+2,X"
+    "PLP")
+  (return ()))
+
+
+
 ;(func (oam/set-prio void ([obj int7] [prio int2])))
 ;(func (oam/set-pal void ([obj int7] [pal int3])))
 ;(func (oam/set-extra-tile void ([obj int7] [set bool])))
