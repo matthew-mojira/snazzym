@@ -6,7 +6,7 @@
 (import "lib/ppu.snm")
 (import "lib/cgram.snm")
 
-(global points word)
+(global points byte)
 (global bg-color word)
 
 (global x-pos word)
@@ -50,6 +50,11 @@
     (inc! points))
   (if (and (> points 0) (nonzero? (bit-and con/con1ff #x0400)))
     (dec! points))
+
+;  (if (nonzero? (bit-and con/con1ff #x0800))
+;    (set! points (+ points 1)))
+;  (if (nonzero? (bit-and con/con1ff #x0400))
+;    (set! points (- points 1)))
 
   (if (and (< x-pos 240) (nonzero? (bit-and con/con1 #x0100)))
     (inc! x-pos))

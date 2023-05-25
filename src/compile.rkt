@@ -118,37 +118,77 @@
                        (Txa)
                        (Sta (Stk (+ 2 offset)))
                        (Rep (Imm8 #x20)))]
-                 [else (Sta (Stk offset))]))]
+                 [(byte)
+                  (seq (Sep (Imm8 #x20)) (Sta (Stk offset)) (Rep (Imm8 #x20)))]
+                 [(word) (Sta (Stk offset))]))]
             [(lookup-type id globs)
              (case (lookup-type id globs)
                [(void) '()]
                [(long)
                 (seq (Sta (Abs (symbol->label id)))
                      (Stx (Abs (string-append (symbol->label id) "+2"))))]
-               ; x 8 bits
-               [else (Sta (Abs (symbol->label id)))])]
+               [(byte) (seq (Tax) (Stx (Abs (symbol->label id))))]
+               [(word) (Sta (Abs (symbol->label id)))])]
             [else (error "Assignment invalid")]))]
     [(Increment id)
      (cond
        [(lookup-type id lenv)
         (let ([offset (lookup-local id lenv)])
-          (seq (Lda (Stk offset)) (Inc) (Sta (Stk offset))))]
+          (case (lookup-type id lenv)
+            [(byte)
+             (seq (Sep (Imm8 #x20))
+                  (Lda (Stk offset))
+                  (Inc)
+                  (Sta (Stk offset))
+                  (Rep (Imm8 #x20)))]
+            [(word) (seq (Lda (Stk offset)) (Inc) (Sta (Stk offset)))]))]
        ; can we ensure global variables of type int can always work with abs?
-       [(lookup-type id globs) (Inc (Abs (symbol->label id)))])]
+       [(lookup-type id globs)
+        (case (lookup-type id globs)
+          [(byte)
+           (seq (Sep (Imm8 #x20))
+                (Inc (Abs (symbol->label id)))
+                (Rep (Imm8 #x20)))]
+          [(word) (Inc (Abs (symbol->label id)))])])]
     [(Decrement id)
      (cond
        [(lookup-type id lenv)
         (let ([offset (lookup-local id lenv)])
-          (seq (Lda (Stk offset)) (Dec) (Sta (Stk offset))))]
+          (case (lookup-type id lenv)
+            [(byte)
+             (seq (Sep (Imm8 #x20))
+                  (Lda (Stk offset))
+                  (Dec)
+                  (Sta (Stk offset))
+                  (Rep (Imm8 #x20)))]
+            [(word) (seq (Lda (Stk offset)) (Dec) (Sta (Stk offset)))]))]
        ; can we ensure global variables of type int can always work with abs?
-       [(lookup-type id globs) (Dec (Abs (symbol->label id)))])]
+       [(lookup-type id globs)
+        (case (lookup-type id globs)
+          [(byte)
+           (seq (Sep (Imm8 #x20))
+                (Dec (Abs (symbol->label id)))
+                (Rep (Imm8 #x20)))]
+          [(word) (Dec (Abs (symbol->label id)))])])]
     [(ZeroOut id)
      (cond
        [(lookup-type id lenv)
         (let ([offset (lookup-local id lenv)])
-          (seq (Lda (Imm 0)) (Sta (Stk offset))))]
+          (case (lookup-type id lenv)
+            [(byte)
+             (seq (Sep (Imm8 #x20))
+                  (Lda (Imm8 0))
+                  (Sta (Stk offset))
+                  (Rep (Imm8 #x20)))]
+            [(word) (seq (Lda (Imm 0)) (Sta (Stk offset)))]))]
        ; can we ensure global variables of type int can always work with abs?
-       [(lookup-type id globs) (Stz (Abs (symbol->label id)))])]
+       [(lookup-type id globs)
+        (case (lookup-type id globs)
+          [(byte)
+           (seq (Sep (Imm8 #x20))
+                (Stz (Abs (symbol->label id)))
+                (Rep (Imm8 #x20)))]
+          [(word) (Stz (Abs (symbol->label id)))])])]
     [(Local bs ss)
      (seq (move-stack (- (length-local bs))) ; allocate
           (compile-stat* ss (append (reverse bs) lenv)) ; inner statements
@@ -175,21 +215,25 @@
                   (Tax) ; x 8 bits
                   (Rep (Imm8 #x20))
                   (Lda (Stk offset)))]
-            [else (Lda (Stk offset))]))]
+            [(byte)
+             (seq (Sep (Imm8 #x20)) (Lda (Stk offset)) (Rep (Imm8 #x20)))]
+            [(word) (Lda (Stk offset))]))]
        [(lookup-type id globs)
         (case (lookup-type id globs)
           [(void) '()]
           [(long)
            (seq (Lda (Abs (symbol->label id)))
                 (Stx (Abs (string-append (symbol->label id) "+2"))))]
-          ; x 8 bits
-          [else (Lda (Abs (symbol->label id)))])]
+          [(byte) (seq (Lda (Abs (symbol->label id))) (And (Imm #x00FF)))]
+          [(word) (Lda (Abs (symbol->label id)))])]
        [(lookup-type id consts)
         (case (lookup-type id consts)
           [(void) '()]
           [(long)
            (seq (Lda (Imm id)) (Ldx (Imm8 (string-append "<:" (~a id)))))]
-          [else (Lda (Imm id))])]
+          [(byte word) (Lda (Imm id))])]
+       ; need to ensure the constant is small enough for byte
+       ; (I don't think this is actually used yet)
        [else (error "Variable invalid")])]
     [(IntOp1 op e)
      (seq (compile-expr e lenv)
@@ -204,7 +248,7 @@
        ; =============================
        ; CONSTANT FOLDING OPTIMIZATION
        ; =============================
-      [(Int n)
+       [(Int n)
         (seq (compile-expr e1 lenv)
              (match op
                ['+ (seq (Clc) (Adc (Imm n)))]
@@ -259,7 +303,8 @@
               (case type
                 [(void) '()]
                 [(long) (seq (Phx) (Pha))]
-                [else (Pha)]))))
+                [(byte) (seq (Tax) (Phx))]
+                [(word) (Pha)]))))
      ; performing the function call
      (Jsl (symbol->label id))
      ; deallocating argument space
@@ -270,20 +315,18 @@
              [(void) (move-stack alloc-size)] ; no need to save
              [(long)
               (seq (Txy)
-                   (Sta (Stk (sub1 alloc-size)))
-                   (move-stack (- alloc-size 2))
+                   (Sta (Zp 0))
+                   (move-stack alloc-size)
                    (Tyx)
-                   (Pla))]
-             [else
-              (seq (Sta (Stk (sub1 alloc-size)))
-                   (move-stack (- alloc-size 2))
-                   (Pla))])))
-     ; an ingenious optimization: the accumulator is saved on the stack that
-     ; we are
-     ; eliminating, so we save it on the stack at a point and deallocate 2 fewer
-     ; bytes so we can pull it at the end
-     ; danger: what if we have byte-sized types eventually?
-     )))
+                   (Lda (Zp 0)))]
+             [(byte)
+              (seq (Sta (Zp 0))
+                   (move-stack alloc-size)
+                   (Lda (Zp 0))
+                   (And (Imm #x00FF)))] ; zero out high byte if there is
+             ; additional stuff here (see note)
+             [(word)
+              (seq (Sta (Zp 0)) (move-stack alloc-size) (Lda (Zp 0)))]))))))
 
 (define (compile-pred p lenv true false)
   (match p

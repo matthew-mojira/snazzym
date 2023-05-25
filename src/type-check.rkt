@@ -44,7 +44,7 @@
     [(Call id es) (type-check-call id es locals)]
     [(Assign id e) (type-check-expr e (typeof-var-mut id locals) locals)]
     [(or (Increment id) (Decrement id) (ZeroOut id))
-     (if (eq? (typeof-var-mut id locals) 'word)
+     (if (eq? (typeof-var-mut id locals) 'int)
          #t
          (error "Type error: operation not on an integer variable"))]
     [(Local bs ss) (type-check-stat* ss type (append (reverse bs) locals))]
@@ -57,10 +57,10 @@
   ; first, do type checking of any subexpressions
   (match expr
     [(Call id es) (type-check-call id es locals)]
-    [(IntOp1 _ e) (type-check-expr e 'word locals)]
+    [(IntOp1 _ e) (type-check-expr e 'int locals)]
     [(IntOp2 _ e1 e2)
-     (type-check-expr e1 'word locals)
-     (type-check-expr e2 'word locals)]
+     (type-check-expr e1 'int locals)
+     (type-check-expr e2 'int locals)]
     [(Ternary p e1 e2)
      (type-check-pred p locals)
      (type-check-expr e1 type locals)
@@ -80,17 +80,17 @@
     [(BoolOp2 _ p1 p2)
      (type-check-pred p1 locals)
      (type-check-pred p2 locals)]
-    [(CompOp1 _ e) (type-check-expr e 'word locals)]
+    [(CompOp1 _ e) (type-check-expr e 'int locals)]
     [(CompOp2 _ e1 e2)
-     (type-check-expr e1 'word locals)
-     (type-check-expr e2 'word locals)]
+     (type-check-expr e1 'int locals)
+     (type-check-expr e2 'int locals)]
     [_ #t]))
 
 (define (typeof-expr expr locals)
   (match expr
-    [(Int _) 'word]
-    [(IntOp1 _ _) 'word]
-    [(IntOp2 _ _ _) 'word]
+    [(Int _) 'int]
+    [(IntOp1 _ _) 'int]
+    [(IntOp2 _ _ _) 'int]
     [(Call id es) (match-let ([(Func _ t _ _) (lookup-func id funcs)]) t)]
     [(Var id) (typeof-var id locals)]
     [(Void) 'void]
@@ -102,19 +102,28 @@
     [(Func _ _ as ss)
      (if (= (length as) (length es))
          (for ([a as] [e es])
-           (type-check-expr e (cdr a) locals))
+           (let ([t (case (cdr a)
+                      [(word byte) 'int]
+                      [else (cdr a)])])
+             (type-check-expr e t locals)))
          (error "Arity mismatch: expected" (length as) "but got" (length es)))]
     [_ (error "Unrecognized function:" id)]))
 
 (define (typeof-var id locals)
-  (cond
-    [(lookup-type id locals)]
-    [(lookup-type id globs)]
-    [(lookup-type id consts)]
-    [else (error "Unrecognized identifier:" id)]))
+  (let ([raw (cond
+               [(lookup-type id locals)]
+               [(lookup-type id globs)]
+               [(lookup-type id consts)]
+               [else (error "Unrecognized identifier:" id)])])
+    (case raw
+      [(byte word int) 'int]
+      [else raw])))
 
 (define (typeof-var-mut id locals)
-  (cond
-    [(lookup-type id locals)]
-    [(lookup-type id globs)]
-    [else (error "Unrecognized identifier:" id)]))
+  (let ([raw (cond
+               [(lookup-type id locals)]
+               [(lookup-type id globs)]
+               [else (error "Unrecognized identifier:" id)])])
+    (case raw
+      [(byte word int) 'int]
+      [else raw])))

@@ -41,11 +41,21 @@
     "STX.W MDMAEN")
   (return ()))
 
-(func (oam/set-x void ([index word] [x word]))
+; S
+; --
+; P
+; retl
+; reth
+; retb
+; xl
+; xh
+; index
+(func (oam/set-x void ([index byte] [x word]))
   (native
     "PHP"
     "REP   #$10"
     "LDA.B 7,S"
+    "AND.W #$00FF"
     "ASL   #2"
     "TAX"
     "LDA.B 5,S"
@@ -56,6 +66,7 @@
     ; get offset in second table
     "SEP   #$10"
     "LDA.B 7,S"
+    "AND.W #$00FF"
     "LSR   #2"
     "TAY" ; Y <- offset in hioam
 
@@ -91,11 +102,12 @@
   ".table_clear:"
     "db %11111110, %11111011, %11101111, %10111111"))
 
-(func (oam/set-y void ([index word] [y word]))
+(func (oam/set-y void ([index byte] [y byte]))
   (native
     "PHP"
     "REP   #$10"
-    "LDA.B 7,S"
+    "LDA.B 6,S"
+    "AND.W #$00FF"
     "ASL   #2"
     "TAX"
     "SEP   #$20"
@@ -104,11 +116,12 @@
     "PLP")
   (return ()))
 
-(func (oam/set-tile void ([obj word] [tile word]))
+(func (oam/set-tile void ([obj byte] [tile byte]))
   (native
     "PHP"
     "REP   #$10"
-    "LDA.B 7,S"
+    "LDA.B 6,S"
+    "AND.W #$00FF"
     "ASL   #2"
     "TAX"
     "SEP   #$20"
