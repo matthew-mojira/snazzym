@@ -17,7 +17,7 @@
     "REP   #$20")
   (return ()))
 
-(func (ppu/set-bg-mode void ([mode int]))
+(func (ppu/set-bg-mode void ([mode word]))
   (native
     "SEP   #$20"
     "LDA.B 4,S"
@@ -25,7 +25,7 @@
     "REP   #$20")
   (return ()))
 
-(func (ppu/set-layer-enabled void ([tm int]))
+(func (ppu/set-layer-enabled void ([tm word]))
   (native
     "SEP   #$20"
     "LDA.B 4,S"
@@ -33,7 +33,7 @@
     "REP   #$20")
   (return ()))
 
-(func (ppu/set-obsel void ([obsel int]))
+(func (ppu/set-obsel void ([obsel word]))
   (native
     "SEP   #$20"
     "LDA.B 4,S"

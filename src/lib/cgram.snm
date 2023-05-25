@@ -1,6 +1,6 @@
 #lang snazzym
 
-(func (cgram/set-bg-color void ([col int]))
+(func (cgram/set-bg-color void ([col word]))
   (native
     "SEP   #$20"
     "STZ.W CGADD"

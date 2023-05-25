@@ -3,7 +3,7 @@
 (provide (all-defined-out))
 
 (define/match (type->size type)
-  [('int) 2]
+  [('word) 2]
   [('byte) 1]
   [('void) 0]
   [('ret) 3] ; return address, should never be definable in a program

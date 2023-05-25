@@ -74,7 +74,7 @@
 
 (define bool-op1 '(not))
 (define bool-op2 '(and or))
-(define comp-op1 '(zero? nonzero? neg? nonneg?))
+(define comp-op1 '(zero? nonzero?))
 (define comp-op2 '(= != > < >= <=))
 (define int-op1 '(<< >> 1+ 1- bit-not))
 (define int-op2 '(+ - bit-or bit-and bit-eor))

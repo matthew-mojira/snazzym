@@ -6,13 +6,13 @@
 (import "lib/ppu.snm")
 (import "lib/cgram.snm")
 
-(global points int)
-(global bg-color int)
+(global points word)
+(global bg-color word)
 
-(global x-pos int)
-(global pos int)
-(global vel int)
-(global acc int)
+(global x-pos word)
+(global pos word)
+(global vel word)
+(global acc word)
 
 (include gfx "graphics.bin")
 
@@ -63,7 +63,7 @@
   (if (>= pos #xC000)
     (set! vel #x0000)
     (set! pos #xC000))
-  (local ([adj-y int])
+  (local ([adj-y word])
     (set! adj-y (>> (>> (>> (>> (>> (>> (>> (>> pos)))))))))
     (oam/set-y 1 adj-y))
   (oam/set-tile 1 points)

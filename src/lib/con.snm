@@ -1,9 +1,9 @@
 #lang snazzym
 
-(global con/con1 int)
-(global con/con2 int)
-(global con/con1ff int)
-(global con/con2ff int)
+(global con/con1 word)
+(global con/con2 word)
+(global con/con1ff word)
+(global con/con2ff word)
 
 (func (con/get-inputs void ())
   (native

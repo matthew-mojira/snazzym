@@ -41,7 +41,7 @@
     "STX.W MDMAEN")
   (return ()))
 
-(func (oam/set-x void ([index int] [x int]))
+(func (oam/set-x void ([index word] [x word]))
   (native
     "PHP"
     "REP   #$10"
@@ -91,7 +91,7 @@
   ".table_clear:"
     "db %11111110, %11111011, %11101111, %10111111"))
 
-(func (oam/set-y void ([index int] [y int]))
+(func (oam/set-y void ([index word] [y word]))
   (native
     "PHP"
     "REP   #$10"
@@ -104,7 +104,7 @@
     "PLP")
   (return ()))
 
-(func (oam/set-tile void ([obj int] [tile int]))
+(func (oam/set-tile void ([obj word] [tile word]))
   (native
     "PHP"
     "REP   #$10"
