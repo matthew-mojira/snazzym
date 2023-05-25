@@ -200,15 +200,28 @@
             ['1- (Dec (Acc 1))]
             ['bit-not (Eor (Acc #xFFFF))]))]
     [(IntOp2 op e1 e2)
-     (seq (compile-expr e2 lenv)
-          (Sta (Zp 0))
-          (compile-expr e1 lenv)
-          (match op
-            ['+ (seq (Clc) (Adc (Zp 0)))]
-            ['- (seq (Sec) (Sbc (Zp 0)))]
-            ['bit-or (Ora (Zp 0))]
-            ['bit-and (And (Zp 0))]
-            ['bit-eor (Eor (Zp 0))]))]
+     (match e2
+       ; =============================
+       ; CONSTANT FOLDING OPTIMIZATION
+       ; =============================
+      [(Int n)
+        (seq (compile-expr e1 lenv)
+             (match op
+               ['+ (seq (Clc) (Adc (Imm n)))]
+               ['- (seq (Sec) (Sbc (Imm n)))]
+               ['bit-or (Ora (Imm n))]
+               ['bit-and (And (Imm n))]
+               ['bit-eor (Eor (Imm n))]))]
+       [_ ; second argument not optimized
+        (seq (compile-expr e2 lenv)
+             (Sta (Zp 0))
+             (compile-expr e1 lenv)
+             (match op
+               ['+ (seq (Clc) (Adc (Zp 0)))]
+               ['- (seq (Sec) (Sbc (Zp 0)))]
+               ['bit-or (Ora (Zp 0))]
+               ['bit-and (And (Zp 0))]
+               ['bit-eor (Eor (Zp 0))]))])]
     [(Ternary p e1 e2)
      (let ([true (gensym ".terntrue")]
            [false (gensym ".ternfalse")]
