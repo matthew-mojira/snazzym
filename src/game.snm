@@ -14,6 +14,11 @@
 (global vel word)
 (global acc word)
 
+(global time-s byte)
+(global time-t byte)
+(global time-m byte)
+(global timer byte)
+
 (include gfx "graphics.bin")
 
 (func (init void ())
@@ -30,6 +35,24 @@
   (oam/init)
   (oam/set-x 1 30)
 
+  (set! time-s #x30)
+  (set! time-t #x30)
+  (set! time-m #x30)
+  (zero! timer)
+
+  (oam/set-x 10 40)
+  (oam/set-x 11 45)
+  (oam/set-x 12 50)
+  (oam/set-x 13 57)
+
+  (oam/set-tile 11 #x3A)
+
+  (local ([x byte])
+    (set! x 10)
+    (while (<= x 13)
+      (oam/set-y x 20)
+      (inc! x)))
+
   (ppu/set-layer-enabled #x10)
   (ppu/set-obsel 0)
   (dma/dma-vram gfx #x0000 #x2000)
@@ -37,6 +60,8 @@
   (return ()))
 
 (func (main void ())
+  ; bg color
+  (inc! bg-color)
   (if (nonzero? (bit-and con/con1ff #x4000))
     (set! bg-color #x03E0))
   (if (nonzero? (bit-and con/con1ff #x8000))
@@ -46,6 +71,7 @@
   (if (nonzero? (bit-and con/con1ff #x0080))
     (set! bg-color #x001F))
 
+  ; moving sprite
   (if (and (< points 127) (nonzero? (bit-and con/con1ff #x0800)))
     (inc! points))
   (if (and (> points 0) (nonzero? (bit-and con/con1ff #x0400)))
@@ -73,6 +99,22 @@
     (oam/set-y 1 adj-y))
   (oam/set-tile 1 points)
   (oam/set-x 1 x-pos)
+
+  ; timer
+  (inc! timer)
+  (if (= timer 60)
+    (zero! timer)
+    (inc! time-s)
+    (if (= time-s #x3A)
+      (set! time-s #x30)
+      (inc! time-t)
+      (if (= time-t #x36)
+        (set! time-t #x30)
+        (inc! time-m))))
+
+  (oam/set-tile 13 time-s)
+  (oam/set-tile 12 time-t)
+  (oam/set-tile 10 time-m)
 
   (return ()))
 

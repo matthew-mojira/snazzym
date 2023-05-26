@@ -138,10 +138,11 @@
             [(byte)
              (seq (Sep (Imm8 #x20))
                   (Lda (Stk offset))
-                  (Inc)
+                  (Inc (Acc 1))
                   (Sta (Stk offset))
                   (Rep (Imm8 #x20)))]
-            [(word) (seq (Lda (Stk offset)) (Inc) (Sta (Stk offset)))]))]
+            [(word)
+             (seq (Lda (Stk offset)) (Inc (Acc 1)) (Sta (Stk offset)))]))]
        ; can we ensure global variables of type int can always work with abs?
        [(lookup-type id globs)
         (case (lookup-type id globs)
@@ -158,10 +159,11 @@
             [(byte)
              (seq (Sep (Imm8 #x20))
                   (Lda (Stk offset))
-                  (Dec)
+                  (Dec (Acc 1))
                   (Sta (Stk offset))
                   (Rep (Imm8 #x20)))]
-            [(word) (seq (Lda (Stk offset)) (Dec) (Sta (Stk offset)))]))]
+            [(word)
+             (seq (Lda (Stk offset)) (Dec (Acc 1)) (Sta (Stk offset)))]))]
        ; can we ensure global variables of type int can always work with abs?
        [(lookup-type id globs)
         (case (lookup-type id globs)
@@ -215,8 +217,7 @@
                   (Tax) ; x 8 bits
                   (Rep (Imm8 #x20))
                   (Lda (Stk offset)))]
-            [(byte)
-             (seq (Sep (Imm8 #x20)) (Lda (Stk offset)) (Rep (Imm8 #x20)))]
+            [(byte) (seq (Lda (Stk offset)) (And (Imm #x00FF)))]
             [(word) (Lda (Stk offset))]))]
        [(lookup-type id globs)
         (case (lookup-type id globs)
@@ -280,9 +281,6 @@
 
 (define (compile-int int)
   (Lda (Imm int)))
-
-(define (compile-bool bool)
-  (Lda (Imm (if bool 1 0))))
 
 ; calling conventions:
 ; caller puts arguments on the stack
