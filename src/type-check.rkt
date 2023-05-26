@@ -112,7 +112,7 @@
     [(Func _ _ as ss)
      (if (= (length as) (length es))
          (for ([a as] [e es])
-           (let ([t (int-or-type a)]) (type-check-expr e t locals)))
+           (let ([t (int-or-type (cdr a))]) (type-check-expr e t locals)))
          (error "Arity mismatch: expected" (length as) "but got" (length es)))]
     [_ (error "Unrecognized function:" id)]))
 

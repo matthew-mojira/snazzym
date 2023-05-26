@@ -14,7 +14,7 @@
   (local ([x byte])
     (zero! x)
     (while (< x 12)
-      (array-set! b x (array-get main (- 11 x)))
+      (array-set! b x (array-get a (- 11 x)))
       (inc! x)))
   (return ()))
 

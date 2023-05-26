@@ -283,14 +283,17 @@
                ['bit-eor (Eor (Imm n))]))]
        [_ ; second argument not optimized
         (seq (compile-expr e2 lenv)
-             (Sta (Zp 0))
-             (compile-expr e1 lenv)
+             (Pha)
+             (compile-expr e1 (cons `(#f . word) lenv))
              (match op
-               ['+ (seq (Clc) (Adc (Zp 0)))]
-               ['- (seq (Sec) (Sbc (Zp 0)))]
-               ['bit-or (Ora (Zp 0))]
-               ['bit-and (And (Zp 0))]
-               ['bit-eor (Eor (Zp 0))]))])]
+               ['+ (seq (Clc) (Adc (Stk 1)))]
+               ['- (seq (Sec) (Sbc (Stk 1)))]
+               ['bit-or (Ora (Stk 1))]
+               ['bit-and (And (Stk 1))]
+               ['bit-eor (Eor (Stk 1))])
+             (Sta (Zp 0))
+             (Pla)
+             (Lda (Zp 0)))])]
     [(Ternary p e1 e2)
      (let ([true (gensym ".terntrue")]
            [false (gensym ".ternfalse")]
@@ -395,14 +398,38 @@
             ['neg? (Bmi true)])
           (Brl false))]
     [(CompOp2 op e1 e2)
+     ; ALERT! COMPARISONS ARE UNSIGNED!!!
      (seq (case op
-            [(= != > <=)
-             (seq (compile-expr e1 lenv) (Sta (Zp 0)) (compile-expr e2 lenv))]
+            [(> <=)
+             (seq (compile-expr e1 lenv)
+                  (Pha)
+                  (compile-expr e2 (cons `(#f . word) lenv))
+                  (Cmp (Stk 1))
+                  (Pla))] ; pull will not clobber carry
             [(< >=)
-             (seq (compile-expr e2 lenv) (Sta (Zp 0)) (compile-expr e1 lenv))])
-          ; ALERT! COMPARISONS ARE UNSIGNED!!!
-          ; OH NO... SIGNED AND UNSIGNED TYPES??
-          (Cmp (Zp 0)) ; no longer compare on the stack
+             (match e2
+               ; CONSTANT FOLDING OPTIMIZATION
+               [(Int i) (seq (compile-expr e1 lenv) (Cmp (Imm i)))]
+               [_
+                (seq (compile-expr e2 lenv)
+                     (Pha)
+                     (compile-expr e1 (cons `(#f . word) lenv))
+                     (Cmp (Stk 1))
+                     (Pla))])] ; pull will not clobber carry
+            [(= !=)
+             (match e2
+               ; CONSTANT FOLDING OPTIMIZATION
+               [(Int i) (seq (compile-expr e1 lenv) (Cmp (Imm i)))]
+               [_
+                (seq (compile-expr e2 lenv)
+                     (Pha)
+                     (compile-expr e1 (cons `(#f . word) lenv))
+                     (Sta (Zp 0))
+                     (Pla)
+                     (Cmp (Zp 0)))])])
+          ; strategy: pull off stack will clobber zero flag, so
+          ; instead we get it off the stack first, then do the
+          ; compare
           (case op
             [(=) (Beq true)]
             [(!=) (Bne true)]
