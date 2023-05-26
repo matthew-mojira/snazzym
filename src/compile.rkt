@@ -439,6 +439,7 @@
 
 (define (make-global-list globals)
   (seq (Org "$7E0010") ; hardcoded start of global area
+       (Comment "global variables:")
        (flatten (map (match-lambda
                        [(Global id t) (Skip (symbol->label id) (type->size t))]
                        [_ '()])
@@ -446,6 +447,7 @@
 
 (define (make-include-list progs)
   (seq (Org "$C10000") ; hardcoded start of data
+       (Comment "file inclusions:")
        (flatten (map (match-lambda
                        [(Include id file)
                         (seq (Label (symbol->label id)) (Incbin file))]
@@ -456,6 +458,7 @@
 
 (define (make-array-list progs)
   (seq (Org "$7E2000") ; hardcoded start of data
+       (Comment "array list:")
        (flatten
         (map (match-lambda
                [(Array id t l) (Skip (symbol->label id) (* (type->size t) l))]

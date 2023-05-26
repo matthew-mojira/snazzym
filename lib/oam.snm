@@ -1,0 +1,20 @@
+#lang snazzym
+
+(global oam/table1 512)
+(global oam/table2 32)
+
+(func (oam/init void ()))
+(func (oam/dma void ()))
+
+(func (oam/set-x void ([obj int7] [x int8])))
+(func (oam/set-y void ([obj int7] [y int8])))
+(func (oam/set-tile void ([obj int7] [tile int8])))
+(func (oam/set-prio void ([obj int7] [prio int2])))
+(func (oam/set-pal void ([obj int7] [pal int3])))
+(func (oam/set-extra-tile void ([obj int7] [set bool])))
+(func (oam/set-extra-x void ([obj int7] [x bool])))
+(func (oam/set-size void ([obj int7] [size bool])))
+(func (oam/set-horiz void ([obj int7] [flip bool])))
+(func (oam/set-vert void ([obj int7] [flip bool])))
+(func (oam/flip-horiz void ([obj int7])))
+(func (oam/flip-vert void ([obj int7])))

@@ -19,6 +19,8 @@
 (global time-m byte)
 (global timer byte)
 
+(global x-scroll word)
+
 (include gfx "graphics.bin")
 
 (func (init void ())
@@ -56,6 +58,10 @@
   (ppu/set-layer-enabled #x11)
   (ppu/set-obsel 0)
   (ppu/set-bg-mode 1)
+  (ppu/set-bg1sc #x10)
+
+  (zero! x-scroll)
+
   (dma/dma-vram gfx #x0000 #x2000)
   (ppu/disable-fblank)
   (return ()))
@@ -78,10 +84,10 @@
   (if (and (> points 0) (nonzero? (bit-and con/con1ff #x0400)))
     (dec! points))
 
-;  (if (nonzero? (bit-and con/con1ff #x0800))
-;    (set! points (+ points 1)))
-;  (if (nonzero? (bit-and con/con1ff #x0400))
-;    (set! points (- points 1)))
+  (if (nonzero? (bit-and con/con1 #x0100))
+    (inc! x-scroll))
+  (if (nonzero? (bit-and con/con1 #x0200))
+    (dec! x-scroll))
 
   (if (and (< x-pos 240) (nonzero? (bit-and con/con1 #x0100)))
     (inc! x-pos))
@@ -124,6 +130,7 @@
   (con/get-inputs)
   (oam/dma)
   (cgram/set-bg-color bg-color)
+  (ppu/set-bg1-horiz x-scroll)
   (ppu/disable-fblank)
   (return ()))
 

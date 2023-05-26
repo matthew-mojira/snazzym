@@ -41,3 +41,20 @@
     "REP   #$20")
   (return ()))
 
+(func (ppu/set-bg1sc void ([obsel byte]))
+  (native
+    "SEP   #$20"
+    "LDA.B 4,S"
+    "STA.W BG1SC"
+    "REP   #$20")
+  (return ()))
+
+(func (ppu/set-bg1-horiz void ([scroll word]))
+  (native
+    "SEP   #$20"
+    "LDA.B 4,S"
+    "STA.W BG1HOFS"
+    "LDA.B 5,S"
+    "STA.W BG1HOFS"
+    "REP   #$20")
+  (return ()))

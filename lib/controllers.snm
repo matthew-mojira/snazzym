@@ -1,0 +1,54 @@
+#lang snazzym
+
+;; Controller library
+(global controller1 int)
+(global controller2 int)
+(global controller3 int)
+(global controller4 int)
+(global controller1-ff int)
+(global controller2-ff int)
+(global controller3-ff int)
+(global controller4-ff int)
+
+(enum con/button
+      ([a _]
+       [b _]
+       [x _]
+       [y _]
+       [up _]
+       [down _]
+       [left _]
+       [right _]
+       [start _]
+       [select _]
+       [l _]
+       [r _]))
+
+(define controller-a _)
+(define controller-b _)
+(define controller-x _)
+(define controller-y _)
+(define controller-up _)
+(define controller-down _)
+(define controller-left _)
+(define controller-right _)
+(define controller-start _)
+(define controller-select _)
+(define controller-l _)
+(define controller-r _)
+
+(func (con/get-inputs void ())
+      ;...
+      )
+
+(func (con/calc-ff void ())
+      ; ...
+      )
+
+(func (con/pressed? bool ([con-number int] [button con/button]))
+  ;...
+)
+
+(func (con/pressed-ff? bool ([con-number int] [button con/button]))
+  ;...
+)

@@ -46,7 +46,7 @@ ORG $00FFE0
 
 ;;    INITIALIZATION ROUTINES
 
-ORG $C08000       ; bank 0 mirror starts at $008000
+ORG $00FD90       ; bank 0 mirror starts at $008000
 I_RESET:
     SEI           ; set interrupt disable
     CLC           ; clear carry flag
@@ -282,6 +282,5 @@ clear_memory:
 +   PLB
     PLP
     RTS
-
 
 warnpc $C0FFB0-1  ; ensure codes does not clobber ROM header
