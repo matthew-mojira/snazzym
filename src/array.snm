@@ -1,10 +1,20 @@
 #lang snazzym
 
-(array a int 12)
+(array a byte 12)
+(array b byte 12)
 
 (func (main void ()) (return ()))
 (func (vblank void ()) (return ()))
 (func (init void ())
-
-    (return ()))
+  (local ([x byte])
+    (zero! x)
+    (while (< x 12)
+      (array-set! a x (1+ x))
+      (inc! x)))
+  (local ([x byte])
+    (zero! x)
+    (while (< x 12)
+      (array-set! b x (array-get main (- 11 x)))
+      (inc! x)))
+  (return ()))
 

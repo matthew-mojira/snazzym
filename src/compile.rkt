@@ -7,7 +7,8 @@
          "local.rkt"
          "global.rkt"
          "func.rkt"
-         "const.rkt")
+         "const.rkt"
+         "array.rkt")
 
 ; global variables are mutated by call to compile
 ; taking a page out of my language!
@@ -16,6 +17,7 @@
 ; wouldnt dynamic scope be cool??
 (define globs '())
 (define funcs '())
+(define arrays '())
 (define consts '())
 ; technically constants, NOT variables...
 ; does this actually get us towards function pointers??
@@ -24,6 +26,7 @@
   (set! globs (extract-globs progs))
   (set! funcs (extract-funcs progs))
   (set! consts (extract-consts progs))
+  (set! arrays (extract-arrays progs))
   (seq (Pushpc)
        (make-global-list progs)
        (make-include-list progs)
@@ -198,6 +201,27 @@
     ; note the use of `length-local` is a bit different from how it was
     ; originally designed
     [(Native as) (map (lambda (a) (Code a)) as)]
+    [(ArraySet a i e)
+     (case (lookup-type a arrays)
+       [(byte)
+        (seq (compile-expr i lenv)
+             (Pha)
+             (compile-expr e (cons `(#f . word) lenv))
+             (Rep (Imm8 #x10))
+             (Plx)
+             (Sep (Imm8 #x20))
+             (Sta (LongX a))
+             (Rep (Imm8 #x20))
+             (Sep (Imm8 #x10)))]
+       [(word)
+        (seq (compile-expr i lenv)
+             (Pha)
+             (compile-expr e (cons `(#f . word) lenv))
+             (Rep (Imm8 #x10))
+             (Plx)
+             (Sta (LongX a))
+             (Sep (Imm8 #x10)))]
+       [(long) (error "not implemented")])]
     [_ (error "not a statement")]))
 
 (define (compile-expr expr lenv)
@@ -277,7 +301,26 @@
             (Brl endif)
             (Label false)
             (compile-expr e2 lenv)
-            (Label endif)))]))
+            (Label endif)))]
+    [(ArrayGet a i)
+     (case (lookup-type a arrays)
+       [(byte)
+        (seq (compile-expr i lenv)
+             (Rep (Imm8 #x10))
+             (Tax)
+             (Lda (LongX a))
+             (And (Imm #x00FF))
+             (Sep (Imm8 #x10)))]
+       [(word)
+        (seq (compile-expr i lenv)
+             (Rep (Imm8 #x10))
+             (Tax)
+             (Lda (LongX a))
+             (Sep (Imm8 #x10)))]
+       [(long) (error "not implemented")])]
+
+    ;;
+    ))
 
 (define (compile-int int)
   (Lda (Imm int)))

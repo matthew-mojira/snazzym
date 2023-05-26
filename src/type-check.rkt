@@ -6,16 +6,19 @@
          "types.rkt"
          "func.rkt"
          "global.rkt"
-         "const.rkt")
+         "const.rkt"
+         "array.rkt")
 
 (define globs '())
 (define funcs '())
+(define arrays '())
 (define consts '())
 
 (define (type-check prog)
   (set! globs (extract-globs prog))
   (set! funcs (extract-funcs prog))
   (set! consts (extract-consts prog))
+  (set! arrays (extract-arrays prog))
   (for ([p prog])
     (type-check-top-level p)))
 
@@ -51,6 +54,10 @@
     [(While p ss)
      (type-check-pred p locals)
      (type-check-stat* ss type locals)]
+    [(ArraySet a i e)
+     (let ([t (int-or-type (lookup-type a arrays))])
+       (type-check-expr i 'int locals)
+       (type-check-expr i t locals))]
     [_ #t]))
 
 (define (type-check-expr expr type locals)
@@ -65,6 +72,7 @@
      (type-check-pred p locals)
      (type-check-expr e1 type locals)
      (type-check-expr e2 type locals)]
+    [(ArrayGet a ei) (type-check-expr ei 'int locals)]
     [_ #t])
   ; second, compare actual type of expression with expected
   (if (eq? (typeof-expr expr locals) type)
@@ -94,18 +102,17 @@
     [(Call id es) (match-let ([(Func _ t _ _) (lookup-func id funcs)]) t)]
     [(Var id) (typeof-var id locals)]
     [(Void) 'void]
-    [(Ternary _ e _) (typeof-expr e locals)]))
-; assumption: both types of ternary operator are the same! (checked above)
+    [(Ternary _ e _) (typeof-expr e locals)]
+    ; assumption: both types of ternary operator are the same! (checked above)
+    [(ArrayGet id _) (int-or-type (lookup-type id arrays))]))
+; type dont change with index
 
 (define (type-check-call id es locals)
   (match (lookup-func id funcs)
     [(Func _ _ as ss)
      (if (= (length as) (length es))
          (for ([a as] [e es])
-           (let ([t (case (cdr a)
-                      [(word byte) 'int]
-                      [else (cdr a)])])
-             (type-check-expr e t locals)))
+           (let ([t (int-or-type a)]) (type-check-expr e t locals)))
          (error "Arity mismatch: expected" (length as) "but got" (length es)))]
     [_ (error "Unrecognized function:" id)]))
 
@@ -127,3 +134,8 @@
     (case raw
       [(byte word int) 'int]
       [else raw])))
+
+(define (int-or-type t)
+  (case t
+    [(word byte) 'int]
+    [else t]))

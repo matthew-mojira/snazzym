@@ -10,6 +10,7 @@
 ; | IntOp2 op e1 e2
 ; | Void
 ; | Ternary
+; | ArrayGet a i
 ; pred =
 ; | True
 ; | False
@@ -29,6 +30,7 @@
 ; | Local bs ss
 ; | While p ss
 ; | Native asm
+; | ArraySet a i e
 ; toplevel =
 ; | Func id t as ss
 ; | Global id t
@@ -38,6 +40,7 @@
 (struct Call   (id es)   #:prefab)
 (struct Var    (id)      #:prefab)
 (struct Void   ()        #:prefab)
+(struct ArrayGet (id i)  #:prefab)
 
 (struct IntOp1  (op e)     #:prefab)
 (struct IntOp2  (op e1 e2) #:prefab)
@@ -59,6 +62,7 @@
 (struct Increment (id)   #:prefab)
 (struct Decrement (id)   #:prefab)
 (struct ZeroOut   (id)   #:prefab)
+(struct ArraySet (id i e) #:prefab)
 
 (struct Local  (bs ss)   #:prefab)
 (struct While  (p ss)    #:prefab)
