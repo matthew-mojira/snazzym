@@ -43,6 +43,9 @@ The following comparisons are defined on integers:
 Note all integer comparisons are unsigned, and the evaluation order of binary
 comparisons is left unspecified.
 
+Constant folding optimization is used for `=`, `!=`, `<`, and `>=` when the
+second argument is an integer literal.
+
 ## Statements with predicates
 
 ### Conditional statements
