@@ -3,11 +3,7 @@
 For when this language isn't enough, native assembly code can be written using
 the native block. The syntax is
 ```scheme
-(native
-  i1
-  i2
-  ...
-  in)
+(native i1 i2 ... in)
 ```
 Where each `ij` is an instruction written in `asar` syntax encoded in a string.
 For example, it could look like
@@ -31,7 +27,7 @@ as the label `thing_table_1`.
 
 Global variables are allocated in RAM starting at address $7E0010. There is
 technically no limit to the number of global variables, which may conflict with
-the stack eventually (or even go beyond the mirror of ram in bank 0). Arrays
+the stack eventually (or even go beyond the mirror of RAM in bank 0). Arrays
 and other large structures in RAM are allocated starting at address $7E2000.
 Again, there is no check for allocations that eventually go beyond the RAM
 area.
@@ -65,7 +61,7 @@ Regarding the placement of the return value of a function:
 
 Regarding the state of the registers/processor:
 * The accumulator must be in 16-bit mode and the index registers in 8-bit mode.
-  Of course you can change these inside a functoin, but it should be set back
+  Of course you can change these inside a function, but it should be set back
   to this before returning.
 * The data bank register and direct register must both be 0.
 * The stack pointer should be the same (a pull for every push). Essentially,
