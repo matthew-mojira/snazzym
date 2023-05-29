@@ -18,6 +18,7 @@
 (global time-t byte)
 (global time-m byte)
 (global timer byte)
+(array stripe-image-loader word 32)
 
 (global x-scroll word)
 
@@ -61,6 +62,12 @@
   (ppu/set-bg1sc #x10)
 
   (zero! x-scroll)
+
+  (local ([i byte])
+    (set! i 0)
+    (while (< i 32)
+      (array-set! stripe-image-loader i #x20)
+      (inc! i)))
 
   (dma/dma-vram gfx #x0000 #x2000)
   (ppu/disable-fblank)
@@ -123,6 +130,11 @@
   (oam/set-tile 12 time-t)
   (oam/set-tile 10 time-m)
 
+  (array-set! stripe-image-loader 3 time-s)
+  (array-set! stripe-image-loader 2 time-t)
+  (array-set! stripe-image-loader 1 #x3A)
+  (array-set! stripe-image-loader 0 time-m)
+
   (return ()))
 
 (func (vblank void ())
@@ -130,6 +142,10 @@
   (con/get-inputs)
   (oam/dma)
   (cgram/set-bg-color bg-color)
+  (dma/dma-vram stripe-image-loader #x1000 64)
+  ; BUG should be $2000 instead of $1000 but apparently that doesn't work
+  ; something to do with the PPU address space being word addressed while the
+  ; CPU address space is byte addressed
   (ppu/set-bg1-horiz x-scroll)
   (ppu/disable-fblank)
   (return ()))

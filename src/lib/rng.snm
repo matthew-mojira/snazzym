@@ -1,0 +1,13 @@
+#lang snazzym
+
+(global rng/seed word)
+
+(func (rng/set-seed void ([seed word]))
+  (set! rng/seed seed)
+  (return ()))
+
+(func (rng/get-random word ())
+  (set! rng/seed (bit-eor rng/seed (<< (<< (<< (<< (<< (<< (<< rng/seed)))))))))
+  (set! rng/seed (bit-eor rng/seed (>> (>> (>> (>> (>> (>> (>> (>> (>> rng/seed)))))))))))
+  (set! rng/seed (bit-eor rng/seed (<< (<< (<< (<< (<< (<< (<< (<< rng/seed))))))))))
+  (return rng/seed))

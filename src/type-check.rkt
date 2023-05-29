@@ -24,7 +24,7 @@
 
 (define (type-check-top-level prog)
   (match prog
-    [(Func _ t bs ss) (type-check-stat* ss t (reverse bs))]
+    [(Func _ t bs ss) (type-check-stat* ss (int-or-type t) (reverse bs))]
     [_ #t]))
 
 (define (type-check-stat* ss type locals)
@@ -45,6 +45,7 @@
      (for ([c cs]) ; the underlying type of c is an If, so use above check
        (type-check-stat c type locals))]
     [(Call id es) (type-check-call id es locals)]
+    [(CallIndirect id es) (type-check-call-indirect id es locals)]
     [(Assign id e) (type-check-expr e (typeof-var-mut id locals) locals)]
     [(or (Increment id) (Decrement id) (ZeroOut id))
      (if (eq? (typeof-var-mut id locals) 'int)
@@ -64,6 +65,7 @@
   ; first, do type checking of any subexpressions
   (match expr
     [(Call id es) (type-check-call id es locals)]
+    [(CallIndirect id es) (type-check-call-indirect id es locals)]
     [(IntOp1 _ e) (type-check-expr e 'int locals)]
     [(IntOp2 _ e1 e2)
      (type-check-expr e1 'int locals)
@@ -75,7 +77,8 @@
     [(ArrayGet a ei) (type-check-expr ei 'int locals)]
     [_ #t])
   ; second, compare actual type of expression with expected
-  (if (eq? (typeof-expr expr locals) type)
+  ; any: allow any type (debug)
+  (if (or (eq? type 'any) (eq? (typeof-expr expr locals) type))
       #t
       (error (string-append "Type error: expected "
                             (~a type)
@@ -115,6 +118,13 @@
            (let ([t (int-or-type (cdr a))]) (type-check-expr e t locals)))
          (error "Arity mismatch: expected" (length as) "but got" (length es)))]
     [_ (error "Unrecognized function:" id)]))
+
+; note: no arity checking or type checking of arguments!!
+(define (type-check-call-indirect id es locals)
+  (type-check-expr id 'long locals)
+  (for ([e es])
+    ; any type of arguments supported
+    (type-check-expr e 'any locals)))
 
 (define (typeof-var id locals)
   (let ([raw (cond

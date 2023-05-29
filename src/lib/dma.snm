@@ -16,6 +16,7 @@
   (native
     ; VRAM register setup
     "LDX.B #!VINC_IncBy1" ; 1 byte increment for each write of VRAM
+    "STX.W VMAINC"
     "LDA.B 6,S" ; dest
     "STA.W VMADD"
     ; DMA register setup

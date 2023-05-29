@@ -1,0 +1,14 @@
+#lang snazzym
+
+(import "lib/rng.snm")
+
+(func (init void ())
+  (rng/set-seed 1)
+  (return ()))
+
+(func (main void ())
+  (rng/get-random)
+  (return ()))
+
+(func (vblank void ())
+  (return ()))

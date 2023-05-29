@@ -38,6 +38,7 @@
 ; | Array id type length
 (struct Int    (i)       #:prefab)
 (struct Call   (id es)   #:prefab)
+(struct CallIndirect (id es) #:prefab)
 (struct Var    (id)      #:prefab)
 (struct Void   ()        #:prefab)
 (struct ArrayGet (id i)  #:prefab)

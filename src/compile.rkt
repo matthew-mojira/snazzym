@@ -210,16 +210,17 @@
              (Rep (Imm8 #x10))
              (Plx)
              (Sep (Imm8 #x20))
-             (Sta (LongX a))
+             (Sta (LongX (symbol->label a)))
              (Rep (Imm8 #x20))
              (Sep (Imm8 #x10)))]
        [(word)
         (seq (compile-expr i lenv)
+             (Asl (Acc 1)) ; 2 bytes each
              (Pha)
              (compile-expr e (cons `(#f . word) lenv))
              (Rep (Imm8 #x10))
              (Plx)
-             (Sta (LongX a))
+             (Sta (LongX (symbol->label a)))
              (Sep (Imm8 #x10)))]
        [(long) (error "not implemented")])]
     [_ (error "not a statement")]))
@@ -255,7 +256,8 @@
         (case (lookup-type id consts)
           [(void) '()]
           [(long)
-           (seq (Lda (Imm id)) (Ldx (Imm8 (string-append "<:" (~a id)))))]
+           (seq (Lda (Imm (symbol->label id)))
+                (Ldx (Imm8 (string-append "<:" (symbol->label id)))))]
           [(byte word) (Lda (Imm id))])]
        ; need to ensure the constant is small enough for byte
        ; (I don't think this is actually used yet)
@@ -311,14 +313,15 @@
         (seq (compile-expr i lenv)
              (Rep (Imm8 #x10))
              (Tax)
-             (Lda (LongX a))
+             (Lda (LongX (symbol->label a)))
              (And (Imm #x00FF))
              (Sep (Imm8 #x10)))]
        [(word)
         (seq (compile-expr i lenv)
+             (Asl (Acc 1)) ; 2 bytes each
              (Rep (Imm8 #x10))
              (Tax)
-             (Lda (LongX a))
+             (Lda (LongX (symbol->label a)))
              (Sep (Imm8 #x10)))]
        [(long) (error "not implemented")])]
 
