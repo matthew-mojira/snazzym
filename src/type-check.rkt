@@ -102,8 +102,9 @@
     [(Int _) 'int]
     [(IntOp1 _ _) 'int]
     [(IntOp2 _ _ _) 'int]
-    [(Call id es) (match-let ([(Func _ t _ _) (lookup-func id funcs)]) t)]
-    [(Var id) (typeof-var id locals)]
+    [(Call id es)
+     (match-let ([(Func _ t _ _) (lookup-func id funcs)]) (int-or-type t))]
+    [(Var id) (int-or-type (typeof-var id locals))]
     [(Void) 'void]
     [(Ternary _ e _) (typeof-expr e locals)]
     ; assumption: both types of ternary operator are the same! (checked above)

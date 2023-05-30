@@ -98,10 +98,10 @@
                      [((If p ss) acc)
                       (let ([true (gensym ".condtrue")]
                             [next (gensym ".condnext")])
-                        (seq (compile-pred p lenv true done)
+                        (seq (compile-pred p lenv true next)
                              (Label true)
                              (compile-stat* ss lenv)
-                             (Jsl done)
+                             (Brl done)
                              (Label next)
                              acc))])
                    '()

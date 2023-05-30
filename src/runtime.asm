@@ -46,7 +46,7 @@ ORG $00FFE0
 
 ;;    INITIALIZATION ROUTINES
 
-ORG $00FD90       ; bank 0 mirror starts at $008000
+ORG $C0FD80       ; bank 0 mirror starts at $008000
 I_RESET:
     SEI           ; set interrupt disable
     CLC           ; clear carry flag
@@ -63,27 +63,33 @@ F_RESET:
     JSR   clear_memory
     LDA.B #$C0    ; automatic read of the SNES read the first pair of JoyPads
     STA.W WRIO    ; IO Port Write Register
-    LDA.B #$81
-    STA.W NMITIMEN
 
     REP   #$20    ; 16-bit A
     SEP   #$10    ; 8-bit XY
 
     JSL   init    ; COMPILED CODE: INITIALIZATION ROUTINES
 
+    SEP   #$20
+    LDA.B #$81
+    STA.W NMITIMEN
+    REP   #$20
+
 -   JSL   main    ; COMPILED CODE: MAIN GAME LOOP
     WAI
     BRA -
 
 I_NMI:
+    PHA
     PHP
-    PHA           ; is this a good order?
     LDA.W RDNMI   ; read for NMI acknowledge
+
+    REP   #$20
+    SEP   #$10
 
     JSL   vblank  ; COMPILED CODE: VBLANK ROUTINE
 
-    PLA
     PLP
+    PLA
     RTI           ; ReTurn from Interrupt
 
 ; this should never run

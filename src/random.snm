@@ -1,14 +1,89 @@
 #lang snazzym
 
 (import "lib/rng.snm")
+(import "lib/oam.snm")
+(import "lib/ppu.snm")
+(import "lib/dma.snm")
+(import "lib/cgram.snm")
+
+(include gfx "graphics.bin")
+
+(global x-pos byte)
+(global y-pos byte)
+
+(array xs byte 32)
+(array ys byte 128)
 
 (func (init void ())
+  (cgram/clear-cgram)
+  (oam/init)
+
   (rng/set-seed 1)
+  (local ([i byte])
+    (zero! i)
+    (while (< i 32)
+      (array-set! xs i 124)
+      (array-set! ys i 108)
+      (oam/set-tile i #x2E)
+      (inc! i)))
+
+  (cgram/set-bg-color #x7FFF)
+  (dma/dma-vram gfx #x0000 #x2000)
+  (ppu/set-layer-enabled #x10)
+
   (return ()))
 
 (func (main void ())
-  (rng/get-random)
+  (local ([i byte])
+    (set! i 30)
+    (while (!= i 255)
+      (array-set! xs (1+ i) (array-get xs i))
+      (array-set! ys (1+ i) (array-get ys i))
+      (dec! i)))
+
+  (local ([x word])
+    (set! x (bit-and (rng/get-random) #x0003))
+    (cond
+      [(= x 0) ((array-set! xs 0 (1+ (array-get xs 0))))]
+      [(= x 1) ((array-set! xs 0 (1- (array-get xs 0))))]
+      [(= x 2) ((array-set! ys 0 (1+ (array-get ys 0))))]
+      [(= x 3) ((array-set! ys 0 (1- (array-get ys 0))))]))
+
+  (if (>= (array-get ys 0) 224)
+    (array-set! ys 0 84))
+
+  (local ([i byte])
+    (zero! i)
+    (while (< i 32)
+      (oam/set-x i (array-get xs i))
+      (oam/set-y i (array-get ys i))
+      (inc! i)))
+
+  (local ([x word])
+    (set! x (bit-and (rng/get-random) #x0003))
+    (cond
+      [(= x 0) ((array-set! xs 0 (1+ (array-get xs 0))))]
+      [(= x 1) ((array-set! xs 0 (1- (array-get xs 0))))]
+      [(= x 2) ((array-set! ys 0 (1+ (array-get ys 0))))]
+      [(= x 3) ((array-set! ys 0 (1- (array-get ys 0))))]))
+
+  (if (>= (array-get ys 0) 224)
+    (array-set! ys 0 84))
+
+  (local ([i byte])
+    (zero! i)
+    (while (< i 32)
+      (oam/set-x i (array-get xs i))
+      (oam/set-y i (array-get ys i))
+      (inc! i)))
+
+
   (return ()))
 
 (func (vblank void ())
+  (ppu/enable-fblank)
+
+  (oam/dma)
+
+  (ppu/disable-fblank)
   (return ()))
