@@ -15,6 +15,7 @@
 (struct Skip (id o) #:prefab)
 (struct Code (asm) #:prefab) ; native code
 (struct Incbin (file) #:prefab)
+(struct Warnpc (addr) #:prefab)
 ; this code directly already looks like assembly, basically
 ; circumvents this whole struct thing
 ;; INSTRUCTIONS
@@ -112,7 +113,8 @@
 
 (define (instr->string ins)
   (match ins
-    [(Org a) (string-append "ORG " a)]
+    [(Org a) (string-append "org " a)]
+    [(Warnpc a) (string-append "warnpc " a)]
     [(Pushpc) "pushpc"]
     [(Pullpc) "pullpc"]
     [(Label l) (string-append (~a l) ":")]

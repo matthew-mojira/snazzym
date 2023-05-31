@@ -446,7 +446,8 @@
        (flatten (map (match-lambda
                        [(Global id t) (Skip (symbol->label id) (type->size t))]
                        [_ '()])
-                     globals))))
+                     globals))
+       (Warnpc "$7E17FF")))
 
 (define (make-include-list progs)
   (seq (Org "$C10000") ; hardcoded start of data
@@ -462,11 +463,12 @@
 (define (make-array-list progs)
   (seq (Org "$7E2000") ; hardcoded start of data
        (Comment "array list:")
-       (flatten
-        (map (match-lambda
-               [(Array id t l) (Skip (symbol->label id) (* (type->size t) l))]
-               [_ '()])
-             progs))))
+       (flatten (map (match-lambda
+                       [(Array id t l)
+                        (Skip (symbol->label id) (* (type->size t) l))]
+                       [_ '()])
+                     progs))
+       (Warnpc "$7FFFFF")))
 
 ; this is inlined for every time it is called!
 ; idea: in certain places this could be *very* optimized
