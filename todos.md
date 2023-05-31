@@ -24,7 +24,8 @@
     and not a local variable/shadowed thing
 * Constant tables
 * constants
-  - top level declaration, substitution made when?
+  - top level declaration, substitution made when? (an early substitution may
+    mean we lose the ability to leverage assembler labels/constants)
   - const expression must be a literal expression (should literal expressions
     include arithmetic between literal expressions?)
   - `(const max-points 100)`

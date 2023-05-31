@@ -474,9 +474,7 @@
 (define (move-stack bytes)
   (seq (Tsc) (Clc) (Adc (Imm bytes)) (Tcs)))
 
-; this will need much more work in the future
+; replace anything not alphanumeric with _
 (define (symbol->label id)
-  (let ([replacements (list '("/" . "_") '("-" . "_"))])
-    (foldr (lambda (pair str) (string-replace str (car pair) (cdr pair)))
-           (~a id)
-           replacements)))
+  (let ([chars (list "/" "-" "." "!" "$" "%" "&" "<" "=" ">" "^" "_" "~" "@")])
+    (foldr (lambda (char str) (string-replace str char "_")) (~a id) chars)))

@@ -71,3 +71,6 @@ Regarding the state of the registers/processor:
 The first 16 bytes of the zero page (addresses $7E0000 to $7E000F) are
 available as scratch area. This area is caller-saved; there is no expectation
 that this memory will be preserved across function calls.
+
+Note that these rules must also apply to native blocks that are integrated with
+language code *within the same function* to ensure compatibility.
