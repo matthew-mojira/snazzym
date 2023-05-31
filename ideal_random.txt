@@ -1,0 +1,71 @@
+import "lib/rng.snm"
+import "lib/oam.snm"
+import "lib/ppu.snm"
+import "lib/dma.snm"
+import "lib/cgram.snm"
+
+include gfx "graphics.bin"
+
+global x_pos: byte
+global y_pos: byte
+
+array xs: byte 32
+array ys: byte 128
+
+func init: void ()
+  cgram/clear_cgram()
+  oam/init()
+
+  rng/set_seed(1)
+  let (i: byte) in
+    i <- 0
+    while i < 32 do
+      xs[i] <- 124
+      ys[i] <- 108
+      oam/set_tile(i, $2E)
+      i <- i + 1
+
+  cgram/set_bg_color($7FFF)
+  dma/dma_vram(gfx, $0000, $2000)
+  ppu/set_layer_enabled($10)
+
+  return ()
+
+func main: void ()
+  let (i: byte) in
+    i <- 30
+    while i != 255 do
+      xs[i + 1] <- xs[i]
+      ys[i + 1] <- ys[i]
+      i <- i - 1
+
+  let (x: word) in
+    x <- rng/get_random() and $0003
+    if x = 0 then
+      xs[0] <- xs[0] + 1
+    elseif x = 1 then
+      xs[0] <- xs[0] - 1
+    elseif x = 2 then
+      ys[0] <- ys[0] + 1
+    elseif x = 3 then
+      ys[0] <- ys[0] - 1
+
+  if ys[0] >= 224 then
+    ys[0] <- 84
+
+  let (i: byte) in
+    i <- 0
+    while i < 32 do
+      oam/set_x(i, xs[i])
+      oam/set_y(i, ys[i])
+      i <- i + 1
+
+  return ()
+
+func vblank: void ()
+  ppu/enable_fblank()
+
+  oam/dma()
+
+  ppu/disable-fblank()
+  return ()

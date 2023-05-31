@@ -1,0 +1,14 @@
+import "lib/dma.snm"
+
+array stuff: int 42
+
+func main: void (x: byte, y: long) do
+  let z: word in
+    foo(x + z)
+    if not(x = z) then
+      stuff[0] <- 12
+    else
+      stuff[0] <- z
+  return ()
+
+
