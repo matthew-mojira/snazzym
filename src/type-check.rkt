@@ -7,18 +7,21 @@
          "func.rkt"
          "global.rkt"
          "const.rkt"
-         "array.rkt")
+         "array.rkt"
+         "enum.rkt")
 
 (define globs '())
 (define funcs '())
 (define arrays '())
 (define consts '())
+(define enums '())
 
 (define (type-check prog)
   (set! globs (extract-globs prog))
   (set! funcs (extract-funcs prog))
   (set! consts (extract-consts prog))
   (set! arrays (extract-arrays prog))
+  (set! enums (extract-enums prog))
   (for ([p prog])
     (type-check-top-level p)))
 
@@ -78,9 +81,9 @@
     [_ #t])
   ; second, compare actual type of expression with expected
   ; any: allow any type (debug)
-  (if (or (eq? type 'any) (eq? (typeof-expr expr locals) type))
+  (if (or (equal? type 'any) (equal? (typeof-expr expr locals) type))
       #t
-      (error (string-append "Type error: expected "
+      (error (string-append "Type mismatch: expected "
                             (~a type)
                             " but got "
                             (~a (typeof-expr expr locals))))))
@@ -132,6 +135,7 @@
                [(lookup-type id locals)]
                [(lookup-type id globs)]
                [(lookup-type id consts)]
+               [(lookup-type id enums)]
                [else (error "Unrecognized identifier:" id)])])
     (case raw
       [(byte word int) 'int]

@@ -36,6 +36,7 @@
 ; | Global id t
 ; | Include file
 ; | Array id type length
+; | Enum name ids
 (struct Int    (i)       #:prefab)
 (struct Call   (id es)   #:prefab)
 (struct CallIndirect (id es) #:prefab)
@@ -75,7 +76,7 @@
 (struct Global (id t)       #:prefab)
 (struct Include (id file)   #:prefab)
 (struct Array (id t l)      #:prefab)
-
+(struct Enum (n ids)        #:prefab)
 
 (define bool-op1 '(not))
 (define bool-op2 '(and or))

@@ -1,0 +1,17 @@
+#lang snazzym
+
+(enum test id1 id2 id3)
+(enum test2 id4 id5 id6)
+
+(func (foo (enum test) ([x (enum test)]))
+  (return x))
+
+(func (init void ())
+  (foo id1)
+  (return ()))
+
+(func (main void ())
+  (return ()))
+
+(func (vblank void ())
+  (return ()))

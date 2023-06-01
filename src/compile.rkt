@@ -8,19 +8,14 @@
          "global.rkt"
          "func.rkt"
          "const.rkt"
-         "array.rkt")
+         "array.rkt"
+         "enum.rkt")
 
-; global variables are mutated by call to compile
-; taking a page out of my language!
-; basically saves us the trouble from having to pass it around, since the global
-; variables and defined functions will never change (I hope)
-; wouldnt dynamic scope be cool??
 (define globs '())
 (define funcs '())
 (define arrays '())
 (define consts '())
-; technically constants, NOT variables...
-; does this actually get us towards function pointers??
+(define enums '())
 
 (define (compile progs)
   (set! globs (extract-globs progs))
@@ -31,6 +26,7 @@
        (make-global-list progs)
        (make-include-list progs)
        (make-array-list progs)
+       (make-enum-list progs)
        (Pullpc)
        (flatten (map compile-top-level progs))))
 
@@ -469,6 +465,20 @@
                        [_ '()])
                      progs))
        (Warnpc "$7FFFFF")))
+
+(define (make-enum-list progs)
+;  (foldr (lambda (tl rest)
+;           (match tl
+;             [(Enum name ids)
+;              (cons (map (lambda (id) (cons id `(enum ,name))) ids) rest)]
+;             [_ rest]))
+;         '()
+;         prog))
+
+  (seq (Comment "enum definitions")
+
+  )
+)
 
 ; this is inlined for every time it is called!
 ; idea: in certain places this could be *very* optimized

@@ -69,16 +69,27 @@ F_RESET:
 
     JSL   init    ; COMPILED CODE: INITIALIZATION ROUTINES
 
+    ; todo need to prevent any interrupts/keep track of NMI or something like
+    ; that (lag frames)
+
+    SEP   #$20
+    LDA.B #$01
+    STA.W NMITIMEN
+    REP   #$20
+
+-   JSL   main    ; COMPILED CODE: MAIN GAME LOOP
+
     SEP   #$20
     LDA.B #$81
     STA.W NMITIMEN
     REP   #$20
 
--   JSL   main    ; COMPILED CODE: MAIN GAME LOOP
     WAI
     BRA -
 
 I_NMI:
+    ; todo implement a proper context switch
+    ; SAVE/RESET EVERYTHING!!
     PHA
     PHP
     LDA.W RDNMI   ; read for NMI acknowledge

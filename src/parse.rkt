@@ -19,7 +19,8 @@
            (parse-stat* ss))]
     [(list 'global id t) (Global id t)]
     [(list 'include id s) (Include id s)]
-    [(list 'array id t l) (Array id t l)]))
+    [(list 'array id t l) (Array id t l)]
+    [(list-rest 'enum name ids) (Enum name ids)]))
 
 (define (parse-stat* stats)
   (map parse-stat stats))

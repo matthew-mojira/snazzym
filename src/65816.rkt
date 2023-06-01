@@ -16,6 +16,7 @@
 (struct Code (asm) #:prefab) ; native code
 (struct Incbin (file) #:prefab)
 (struct Warnpc (addr) #:prefab)
+(struct DefnAsm (name v) #:prefab)
 ; this code directly already looks like assembly, basically
 ; circumvents this whole struct thing
 ;; INSTRUCTIONS
@@ -123,6 +124,7 @@
     [(Skip id o) (string-append (~a id) ": skip " (~a o))]
     [(Code asm) (string-append "    " (~a asm))]
     [(Incbin file) (string-append "incbin " (~v file))]
+    [(DefnAsm name v) (string-append "!" (~a name) "=" (~a v))]
     [(Adc x) (string-append "    ADC" (addr-mode->string x))]
     [(Sbc x) (string-append "    SBC" (addr-mode->string x))]
     [(Cmp x) (string-append "    CMP" (addr-mode->string x))]
