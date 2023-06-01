@@ -53,3 +53,6 @@
 ; '(x (array byte))
 ; or
 ; '(f (func void byte byte byte))
+; Note: as a list of lists there will be no RHS parentheses but that's okay
+
+; Thought: Should we parse types as well?

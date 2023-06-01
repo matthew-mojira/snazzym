@@ -43,7 +43,6 @@
                   [(list p ss) (If (parse-pred p) (parse-stat* ss))])
                 cs))]
     [(list 'array-set! id ei ev) (ArraySet id (parse-expr ei) (parse-expr ev))]
-    [(list-rest 'call id es) (CallIndirect id (map parse-expr es))]
     [(cons id es) (Call id (map parse-expr es))]))
 
 (define (parse-expr expr)

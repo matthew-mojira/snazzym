@@ -19,6 +19,7 @@
 ; | CompOp1 op e
 ; | CompOp2 op e1 e2
 ; stat =
+; | Call id es
 ; | Return e
 ; | If p ss
 ; | IfElse p ss1 ss2
@@ -39,7 +40,6 @@
 ; | Enum name ids
 (struct Int    (i)       #:prefab)
 (struct Call   (id es)   #:prefab)
-(struct CallIndirect (id es) #:prefab)
 (struct Var    (id)      #:prefab)
 (struct Void   ()        #:prefab)
 (struct ArrayGet (id i)  #:prefab)

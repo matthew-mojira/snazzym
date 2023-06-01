@@ -1,6 +1,7 @@
 #lang racket
 (provide main)
 (require racket/pretty
+         "ast.rkt"
          "parse.rkt"
          "compile.rkt"
          "type-check.rkt"
@@ -8,9 +9,10 @@
 
 (define (main fn)
   (let ([prog (parse (read-file fn))])
-;    (pretty-print prog)
-    (type-check prog)
-    (printer (compile prog))
+    (pretty-print (extract-global-env prog))
+    ;    (pretty-print prog)
+    ;    (type-check prog)
+    ;    (printer (compile prog))
     ))
 
 (define (read-lines file)
@@ -28,3 +30,20 @@
     (let ([lines (read-lines file)])
       (close-input-port file)
       lines)))
+
+; function probably should not live here
+(define (extract-global-env prog)
+  (foldr (lambda (tl rest)
+           ; append because we can have a top level declaration
+           ; transform into a list (see enum)
+           (append (match tl
+                     [(Global id t) `((,id ,t))]
+                     ; for functions, extracts the types with `cdr`
+                     [(Func id t as _) `((,id func ,t ,(map cdr as)))]
+                     [(Enum name ids) (map (lambda (id) `(,id enum ,name)) ids)]
+                     [(Include id _) `((,id const long))]
+                     [(Array id t _) `((,id array ,t))]
+                     [_ '()])
+                   rest))
+         '()
+         prog))
