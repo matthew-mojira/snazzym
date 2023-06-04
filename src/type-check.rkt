@@ -4,13 +4,14 @@
 (require "ast.rkt"
          "65816.rkt"
          "types.rkt"
-         "global.rkt" racket/pretty)
+         "global.rkt"
+         racket/pretty)
 
 (define g-env '())
 
 (define (type-check prog)
   (set! g-env (extract-global-env prog))
-;  (pretty-print g-env)
+  ;  (pretty-print g-env)
   (for ([p prog])
     (type-check-top-level p)))
 
@@ -89,13 +90,12 @@
   ; second, compare actual type of expression with expected
   (if (types-match? type (typeof-expr expr (append locals g-env)))
       #t
-      (error (string-append
-              "Type mismatch: expected "
-              (~v type)
-              " but got "
-              (~v (int-or-type (typeof-expr expr (append locals g-env))))
-              ". Expression in question:"
-              (~v expr)))))
+      (error (string-append "Type mismatch: expected "
+                            (~v type)
+                            " but got "
+                            (~v (typeof-expr expr (append locals g-env)))
+                            ". Expression in question:"
+                            (~v expr)))))
 
 (define (types-match? exp act)
   ; ignore if the type is const
@@ -116,11 +116,39 @@
          [_ #f])]
       [(list 'array t)
        (match act
-         [(list 'array ta) (types-match? t ta)]
+         [(list 'array ta) (types-match-strict-int? t ta)]
          [_ #f])]
       [(list 'func re pe)
        (match act
-         [(list 'func ra pa) (and (types-match? re ra) (types-match? pe pa))]
+         [(list 'func ra pa)
+          (and (types-match-strict-int? re ra) (types-match-strict-int? pe pa))]
+         [_ #f])]
+      [(cons t ts)
+       (match act
+         [(cons a as) (and (types-match? t a) (types-match? ts as))]
+         [_ #f])]
+      [exp (equal? exp act)])))
+
+; used for array/func types where byte/word must match
+(define (types-match-strict-int? exp act)
+  (let ([act (extract-const act)])
+    (match exp
+      ['any #t]
+      ['long
+       (match act
+         ; okay here, will cast to const long (underlying pointer)
+         [(list 'array _) #t]
+         [(cons 'func _) #t]
+         ['long #t]
+         [_ #f])]
+      [(list 'array t)
+       (match act
+         [(list 'array ta) (types-match-strict-int? t ta)]
+         [_ #f])]
+      [(list 'func re pe)
+       (match act
+         [(list 'func ra pa)
+          (and (types-match-strict-int? re ra) (types-match-strict-int? pe pa))]
          [_ #f])]
       [(cons t ts)
        (match act

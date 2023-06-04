@@ -1,16 +1,17 @@
 #lang snazzym
 
-(array a (array int) 10)
-(array b int 10)
-(array c (array (array int)) 10)
+(array a (array word) 10)
+(array b word 10)
+(array c (array (array word)) 10)
 (array d (func void (byte)) 5)
+(array e byte 3)
 
-(global p (array int))
+(global p (array word))
 
-(func (baz void ([z (array (array int))]))
+(func (baz void ([z (array (array word))]))
   (return ()))
 
-(func (foo void ([x (array int)] [y word]))
+(func (foo void ([x (array word)] [y word]))
   (bar)
   (foo x y)
   (return ()))
@@ -20,4 +21,5 @@
   (local ([x byte] [y word])
     (set! x (if-expr true x y)))
   (array-set! p 1 0)
+  (set! p e) ; this shouldn't work!
   (return ()))

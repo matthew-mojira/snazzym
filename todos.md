@@ -65,6 +65,7 @@
   - think about the goals of the language, and whether or not this should be
     even possible, or if it is forced to only native code
 * signed integers and comparison
+* Multi-dimensional arrays
 
 ## Optimizations
 
