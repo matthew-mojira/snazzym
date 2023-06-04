@@ -7,11 +7,9 @@ An array declaration must be made at the top level as follows:
 (array id type size)
 ```
 
-* `id` is the name of the array. The identifier itself is of type `long` and
-  represents the address of the first element in the array.
+* `id` is the name of the array.
 * `type` is the type of the underlying elements (all elements must be of the
-  same type). At the moment, arrays are supported for types `byte` and `word`
-  only. In the future there will be support of arrays of type `long`.
+  same type).
 * `size` is the number of elements in the array (not the size in bytes).
 
 The memory for arrays in RAM is allocated sequentially starting at $7E2000.
@@ -22,10 +20,10 @@ beyond RAM.
 
 Setting an element in an array is done with the statement
 ```scheme
-(array-set! id index elem)
+(array-set! a index elem)
 ```
-* `id` is the name of the array which must be known at compiletime. In the
-  future, this may be an expression which evaluates to the chosen array.
+* `a` is the array, which may be an expression which evaluates to the chosen
+  array.
 * `index` is an integral expression which represents the index into the array.
   There is no check for an index beyond the end of the array.
 * `elem` is an expression for the element that will be written into the array.
@@ -34,10 +32,10 @@ Setting an element in an array is done with the statement
 
 Getting an element in an array is done with
 ```scheme
-(array-get id index)
+(array-get a index)
 ```
 which is an expression that evaluates to the selected element in the array.
-* `id` is the name of the array which must be known at compiletime. In the
-  future, this may be an expression which evaluates to the chosen array.
+* `a` is the the array which may be an expression which evaluates to the chosen
+  array.
 * `index` is an integral expression which represents the index into the array.
   There is no check for an index beyond the end of the array.

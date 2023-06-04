@@ -1,0 +1,33 @@
+#lang snazzym
+
+(import "lib/con.snm")
+
+(array a word 16)
+(array b word 16)
+(array c word 16)
+
+(global x (array word))
+; if this is not initialized??
+
+(global f (func void ()))
+
+(func (main void ())
+  (cond
+    [(nonzero? (bit-and con/con1 #x4000))
+      (set! x a)]
+    [(nonzero? (bit-and con/con1 #x8000))
+      (set! x b)]
+    [true
+      (set! x c)])
+  (array-set! x 0 (1+ (array-get x 0)))
+  (return ()))
+
+(func (vblank void ())
+  (f)
+  (return ()))
+
+(func (init void ())
+  (set! x c)
+  (set! f con/get-inputs)
+  (return ()))
+

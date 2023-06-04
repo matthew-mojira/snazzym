@@ -52,6 +52,7 @@
 (struct Bvs (x) #:prefab) ;string label
 (struct Brl (x) #:prefab) ;string label
 (struct Jmp (x) #:prefab) ;string label
+(struct Jml (x) #:prefab) ;string label
 (struct Jsl (x) #:prefab) ;string label
 (struct Jsr (x) #:prefab) ;string label
 (struct Rts () #:prefab)
@@ -157,6 +158,7 @@
     [(Bvs l) (string-append "    BVS   " (~a l))]
     [(Brl l) (string-append "    BRL   " (~a l))]
     [(Jmp l) (string-append "    JMP   " (~a l))]
+    [(Jml l) (string-append "    JML" (addr-mode->string l))]
     [(Jsl l) (string-append "    JSL   " (~a l))]
     [(Jsr l) (string-append "    JSR   " (~a l))]
     [(Rts) "    RTS"]
@@ -186,7 +188,7 @@
     [(Wdm x) (string-append "    WDM" (addr-mode->string x))]
     [(Pea x) (string-append "    PEA" (addr-mode->string x))]
     [(Pei x) (string-append "    PEI" (addr-mode->string x))]
-    [(Per x) (string-append "    PER" (addr-mode->string x))]
+    [(Per x) (string-append "    PER   " (~a x))]
     [(Pha) "    PHA"]
     [(Phx) "    PHX"]
     [(Phy) "    PHY"]

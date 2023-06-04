@@ -46,7 +46,7 @@ ORG $00FFE0
 
 ;;    INITIALIZATION ROUTINES
 
-ORG $C0FD80       ; bank 0 mirror starts at $008000
+ORG $C0FD60       ; bank 0 mirror starts at $008000
 I_RESET:
     SEI           ; set interrupt disable
     CLC           ; clear carry flag
@@ -96,6 +96,8 @@ I_NMI:
 
     REP   #$20
     SEP   #$10
+
+    NOP   #30
 
     JSL   vblank  ; COMPILED CODE: VBLANK ROUTINE
 

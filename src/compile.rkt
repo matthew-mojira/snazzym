@@ -5,31 +5,20 @@
          "65816.rkt"
          "types.rkt"
          "local.rkt"
-         "global.rkt"
-         "func.rkt"
-         "const.rkt"
-         "array.rkt"
-         "enum.rkt")
+         "global.rkt")
 
-(define globs '())
-(define funcs '())
-(define arrays '())
-(define consts '())
-(define enums '())
+(define g-env '())
 
 (define (compile progs)
-  (set! globs (extract-globs progs))
-  (set! funcs (extract-funcs progs))
-  (set! consts (extract-consts progs))
-  (set! arrays (extract-arrays progs))
+  (set! g-env (extract-global-env progs))
   (seq (Pushpc)
        (make-global-list progs)
        (make-include-list progs)
        (make-array-list progs)
-       (make-enum-list progs)
        (Pullpc)
        (flatten (map compile-top-level progs))))
 
+; todo make this make-func-list instead like the above!
 (define (compile-top-level prog)
   (match prog
     [(Func id _ as ss) ; args not handled
@@ -44,15 +33,11 @@
 
 (define (compile-stat stat lenv)
   (match stat
-    [(Call id as) (compile-call id as lenv)]
-    [(Return expr) ; need to deallocate any remaining local variables bound
+    [(Call id-e as) (compile-call id-e as lenv)]
+    [(Return expr)
      (seq (compile-expr expr lenv)
-          ; NEED TYPE OF UNDERLYING EXPRESSION
-          ; this just takes the safe approach and saves everything
-          ; (it doesn't know)
-          ; in the future: more interesting types and byte types will
-          ; necessitate a rethink of this very much
-          (let ([alloc-size (length-local lenv)])
+          ; need to deallocate any remaining local variables bound
+          (let ([alloc-size (local-size lenv)])
             (if (zero? alloc-size)
                 '() ; no need to deallocate
                 (seq (Txy)
@@ -104,160 +89,270 @@
                    cs)
             (Label done)))]
     [(Assign id e)
+     ; by assumption `id` is the name of a valid variable
+     ; unlike array-set! where the name can be an expression evaluating to the
+     ; pointer
+     ; it may be global or local
      (seq (compile-expr e lenv)
-          (cond
-            [(lookup-type id lenv)
-             (let ([offset (lookup-local id lenv)])
-               (case (lookup-type id lenv)
-                 [(void) '()]
-                 [(long)
-                  ; to use stack addrsssing, need to send X to A
-                  (seq (Sta (Stk offset))
-                       (Sep (Imm8 #x20))
-                       (Txa)
-                       (Sta (Stk (+ 2 offset)))
-                       (Rep (Imm8 #x20)))]
-                 [(byte)
-                  (seq (Sep (Imm8 #x20)) (Sta (Stk offset)) (Rep (Imm8 #x20)))]
-                 [(word) (Sta (Stk offset))]))]
-            [(lookup-type id globs)
-             (case (lookup-type id globs)
-               [(void) '()]
-               [(long)
-                (seq (Sta (Abs (symbol->label id)))
-                     (Stx (Abs (string-append (symbol->label id) "+2"))))]
-               [(byte) (seq (Tax) (Stx (Abs (symbol->label id))))]
-               [(word) (Sta (Abs (symbol->label id)))])]
-            [else (error "Assignment invalid")]))]
+          ; accumulator/registers will have value
+          (if (lookup-type id lenv)
+
+              (match (lookup-type id lenv)
+                ['void '()]
+                [(or 'long (list 'array _) (list 'func _ _))
+                 ; all pointer types
+                 (let ([offset (local-offset id lenv)])
+                   ; to use stack addrsssing, need to send X to A
+                   (seq (Sta (Stk offset))
+                        (Sep (Imm8 #x20))
+                        (Txa)
+                        (Sta (Stk (+ 2 offset)))
+                        (Rep (Imm8 #x20))))]
+                ['byte
+                 (let ([offset (local-offset id lenv)])
+                   (seq (Sep (Imm8 #x20))
+                        (Sta (Stk offset)) ; store
+                        (Rep (Imm8 #x20))))]
+                ['word
+                 (let ([offset (local-offset id lenv)]) (Sta (Stk offset)))])
+
+              (match (lookup-type id g-env)
+                ['void '()]
+                [(or 'long (list 'array _) (list 'func _ _))
+                 ; all pointer types
+                 (seq (Sta (Abs (symbol->label id)))
+                      (Stx (Abs (string-append (symbol->label id) "+2"))))]
+                ['byte (seq (Tax) (Stx (Abs (symbol->label id))))]
+                ['word (Sta (Abs (symbol->label id)))])))]
+
     [(Increment id)
-     (cond
-       [(lookup-type id lenv)
-        (let ([offset (lookup-local id lenv)])
-          (case (lookup-type id lenv)
-            [(byte)
-             (seq (Sep (Imm8 #x20))
-                  (Lda (Stk offset))
-                  (Inc (Acc 1))
-                  (Sta (Stk offset))
-                  (Rep (Imm8 #x20)))]
-            [(word)
-             (seq (Lda (Stk offset)) (Inc (Acc 1)) (Sta (Stk offset)))]))]
-       ; can we ensure global variables of type int can always work with abs?
-       [(lookup-type id globs)
-        (case (lookup-type id globs)
-          [(byte)
-           (seq (Sep (Imm8 #x20))
-                (Inc (Abs (symbol->label id)))
-                (Rep (Imm8 #x20)))]
-          [(word) (Inc (Abs (symbol->label id)))])])]
+     (if (lookup-type id lenv)
+         (match (lookup-type id lenv)
+           ['byte
+            (let ([offset (local-offset id lenv)])
+              (seq (Sep (Imm8 #x20))
+                   (Lda (Stk offset))
+                   (Inc (Acc 1))
+                   (Sta (Stk offset))
+                   (Rep (Imm8 #x20))))]
+           ['word
+            (let ([offset (local-offset id lenv)])
+              (seq (Lda (Stk offset))
+                   (Inc (Acc 1)) ;inc
+                   (Sta (Stk offset))))])
+
+         (match (lookup-type id g-env)
+           ['byte
+            (seq (Sep (Imm8 #x20))
+                 (Inc (Abs (symbol->label id)))
+                 (Rep (Imm8 #x20)))]
+           ['word (Inc (Abs (symbol->label id)))]))]
+
     [(Decrement id)
-     (cond
-       [(lookup-type id lenv)
-        (let ([offset (lookup-local id lenv)])
-          (case (lookup-type id lenv)
-            [(byte)
-             (seq (Sep (Imm8 #x20))
-                  (Lda (Stk offset))
-                  (Dec (Acc 1))
-                  (Sta (Stk offset))
-                  (Rep (Imm8 #x20)))]
-            [(word)
-             (seq (Lda (Stk offset)) (Dec (Acc 1)) (Sta (Stk offset)))]))]
-       ; can we ensure global variables of type int can always work with abs?
-       [(lookup-type id globs)
-        (case (lookup-type id globs)
-          [(byte)
-           (seq (Sep (Imm8 #x20))
-                (Dec (Abs (symbol->label id)))
-                (Rep (Imm8 #x20)))]
-          [(word) (Dec (Abs (symbol->label id)))])])]
+     (if (lookup-type id lenv)
+         (match (lookup-type id lenv)
+           ['byte
+            (let ([offset (local-offset id lenv)])
+              (seq (Sep (Imm8 #x20))
+                   (Lda (Stk offset))
+                   (Dec (Acc 1))
+                   (Sta (Stk offset))
+                   (Rep (Imm8 #x20))))]
+           ['word
+            (let ([offset (local-offset id lenv)])
+              (seq (Lda (Stk offset))
+                   (Dec (Acc 1)) ;dec
+                   (Sta (Stk offset))))])
+
+         (match (lookup-type id g-env)
+           ['byte
+            (seq (Sep (Imm8 #x20))
+                 (Dec (Abs (symbol->label id)))
+                 (Rep (Imm8 #x20)))]
+           ['word (Dec (Abs (symbol->label id)))]))]
+
     [(ZeroOut id)
-     (cond
-       [(lookup-type id lenv)
-        (let ([offset (lookup-local id lenv)])
-          (case (lookup-type id lenv)
-            [(byte)
-             (seq (Sep (Imm8 #x20))
-                  (Lda (Imm8 0))
-                  (Sta (Stk offset))
-                  (Rep (Imm8 #x20)))]
-            [(word) (seq (Lda (Imm 0)) (Sta (Stk offset)))]))]
-       ; can we ensure global variables of type int can always work with abs?
-       [(lookup-type id globs)
-        (case (lookup-type id globs)
-          [(byte)
-           (seq (Sep (Imm8 #x20))
-                (Stz (Abs (symbol->label id)))
-                (Rep (Imm8 #x20)))]
-          [(word) (Stz (Abs (symbol->label id)))])])]
+     (if (lookup-type id lenv)
+         (match (lookup-type id lenv)
+           ['byte
+            (let ([offset (local-offset id lenv)])
+              (seq (Sep (Imm8 #x20))
+                   (Lda (Imm8 0))
+                   (Sta (Stk offset))
+                   (Rep (Imm8 #x20))))]
+           ['word
+            (let ([offset (local-offset id lenv)])
+              (seq (Lda (Imm 0)) ;load 0
+                   (Sta (Stk offset))))])
+
+         (match (lookup-type id g-env)
+           ['byte
+            (seq (Sep (Imm8 #x20))
+                 (Stz (Abs (symbol->label id)))
+                 (Rep (Imm8 #x20)))]
+           ['word (Stz (Abs (symbol->label id)))]))]
+
     [(Local bs ss)
-     (seq (move-stack (- (length-local bs))) ; allocate
+     (seq (move-stack (- (local-size bs))) ; allocate
           (compile-stat* ss (append (reverse bs) lenv)) ; inner statements
-          (move-stack (length-local bs)))] ; deallocate
-    ; note the use of `length-local` is a bit different from how it was
+          (move-stack (local-size bs)))] ; deallocate
+    ; note the use of `local-size` is a bit different from how it was
     ; originally designed
     [(Native as) (map (lambda (a) (Code a)) as)]
-    [(ArraySet a i e)
-     (case (lookup-type a arrays)
-       [(byte)
-        (seq (compile-expr i lenv)
-             (Pha)
-             (compile-expr e (cons `(#f . word) lenv))
-             (Rep (Imm8 #x10))
-             (Plx)
-             (Sep (Imm8 #x20))
-             (Sta (LongX (symbol->label a)))
-             (Rep (Imm8 #x20))
-             (Sep (Imm8 #x10)))]
-       [(word)
-        (seq (compile-expr i lenv)
-             (Asl (Acc 1)) ; 2 bytes each
-             (Pha)
-             (compile-expr e (cons `(#f . word) lenv))
-             (Rep (Imm8 #x10))
-             (Plx)
-             (Sta (LongX (symbol->label a)))
-             (Sep (Imm8 #x10)))]
-       [(long) (error "not implemented")])]
-    [_ (error "not a statement")]))
+    [(ArraySet a-e i e)
+     ; evaluation orders are
+     ; const array: i -> e
+     ; non-const: i -> e -> a-e
+     (match (typeof-expr a-e (append lenv g-env))
+       [(list 'array r)
+        (match r
+          ['byte
+           (seq (compile-expr i lenv)
+                (Pha) ; push offset
+                (compile-expr e (cons '(#f . word) lenv))
+                ; accumulator has data to put
+                (Tax)
+                (Phx)
+                (compile-expr a-e (append '((#f . byte) (#f . word)) lenv))
+                ; accumulator has address of array
+                (Sta (Zp 0))
+                (Stx (Zp 2))
+                (Sep (Imm8 #x20)) ; 8-bit A, 16-bit XY
+                (Rep (Imm8 #x10)) ; in the future: small offsets can be 8-bit
+                (Pla) ; data to put
+                (Ply) ; offset
+                (Sta (ZpIndY 0)) ; STORE!
+                (Rep (Imm8 #x20))
+                (Sep (Imm8 #x10)))]
+          ['word
+           (seq (compile-expr i lenv)
+                (Asl (Acc 1)) ; 2 bytes
+                (Pha) ; push offset
+                (compile-expr e (cons '(#f . word) lenv))
+                ; accumulator has data to put
+                (Pha)
+                (compile-expr a-e (append '((#f . word) (#f . word)) lenv))
+                ; accumulator has address of array
+                (Sta (Zp 0))
+                (Stx (Zp 2))
+                (Rep (Imm8 #x10)) ; 16-bit XY
+                (Pla) ; data to put
+                (Ply) ; offset
+                (Sta (ZpIndY 0)) ; STORE!
+                (Sep (Imm8 #x10)))]
+          [(or 'long (list 'array _) (list 'func _ _))
+           (seq (compile-expr i lenv)
+                (Sta (Zp 0))
+                (Asl (Acc 1))
+                (Clc) ; may not be necessary given above line
+                (Adc (Zp 0)) ; 3 bytes
+                (Pha) ; push offset
+                (compile-expr e (cons '(#f . word) lenv))
+                (Phx)
+                (Pha)
+                (compile-expr a-e (append '((#f . long) (#f . word)) lenv))
+                ; accumulator has address of array
+                (Sta (Zp 0))
+                (Stx (Zp 2))
+                (Pla) ; data to put
+                (Plx) ; bank byte
+                (Rep (Imm8 #x10)) ; 16-bit XY
+                (Ply) ; offset
+                (Sta (ZpIndY 0)) ; STORE!
+                (Sep (Imm8 #x20)) ; 8-bit A
+                (Iny (Acc 2)) ; bank byte address
+                (Txa)
+                (Sta (ZpIndY 0)) ; STORE!
+                (Rep (Imm8 #x20))
+                (Sep (Imm8 #x10)))])]
+       [(list 'const 'array r)
+        (match r
+          ['byte
+           (seq (compile-expr i lenv)
+                (Pha) ; push offset
+                (compile-expr e (cons '(#f . word) lenv))
+                ; accumulator has data to put
+                (Rep (Imm8 #x10))
+                (Plx)
+                (Sep (Imm8 #x20))
+                (Sta (LongX (const-var->label a-e)))
+                (Rep (Imm8 #x20))
+                (Sep (Imm8 #x10)))]
+          ['word
+           (seq (compile-expr i lenv)
+                (Asl (Acc 1)) ; 2 bytes
+                (Pha) ; push offset
+                (compile-expr e (cons '(#f . word) lenv))
+                ; accumulator has data to put
+                (Rep (Imm8 #x10))
+                (Plx)
+                (Sta (LongX (const-var->label a-e)))
+                (Sep (Imm8 #x10)))]
+          [(or 'long (list 'array _) (list 'func _ _))
+           (seq (compile-expr i lenv)
+                (Sta (Zp 0))
+                (Asl (Acc 1))
+                (Clc) ; may not be necessary given above line
+                (Adc (Zp 0)) ; 3 bytes
+                (Pha) ; push offset
+                (compile-expr e (cons '(#f . word) lenv))
+                (Txy) ; Y <- bank
+                (Rep (Imm8 #x10))
+                (Plx) ; offset
+                (Sta (LongX (const-var->label a-e)))
+                (Sep (Imm8 #x20))
+                (Tya) ; A <- bank
+                (Sta (LongX (string-append (const-var->label a-e) "+2")))
+                (Rep (Imm8 #x20))
+                (Sep (Imm8 #x10)))])])
+     ;
+     ]))
 
 (define (compile-expr expr lenv)
   (match expr
     [(Int i) (compile-int i)]
     [(Void) '()]
-    [(Call id as) (compile-call id as lenv)]
+    [(Call id-e as) (compile-call id-e as lenv)]
     [(Var id)
-     (cond
-       [(lookup-type id lenv)
-        (let ([offset (lookup-local id lenv)])
-          (case (lookup-type id lenv)
-            [(void) '()]
-            [(long)
-             (seq (Sep (Imm8 #x20))
-                  (Lda (Stk (+ 2 offset)))
-                  (Tax) ; x 8 bits
-                  (Rep (Imm8 #x20))
-                  (Lda (Stk offset)))]
-            [(byte) (seq (Lda (Stk offset)) (And (Imm #x00FF)))]
-            [(word) (Lda (Stk offset))]))]
-       [(lookup-type id globs)
-        (case (lookup-type id globs)
-          [(void) '()]
-          [(long)
-           (seq (Lda (Abs (symbol->label id)))
-                (Stx (Abs (string-append (symbol->label id) "+2"))))]
-          [(byte) (seq (Lda (Abs (symbol->label id))) (And (Imm #x00FF)))]
-          [(word) (Lda (Abs (symbol->label id)))])]
-       [(lookup-type id consts)
-        (case (lookup-type id consts)
-          [(void) '()]
-          [(long)
-           (seq (Lda (Imm (symbol->label id)))
-                (Ldx (Imm8 (string-append "<:" (symbol->label id)))))]
-          [(byte word) (Lda (Imm id))])]
-       ; need to ensure the constant is small enough for byte
-       ; (I don't think this is actually used yet)
-       [else (error "Variable invalid")])]
+     (if (lookup-type id lenv)
+
+         (match (lookup-type id lenv)
+           ['void '()]
+           [(or 'long (list 'array _) (list 'func _ _))
+            ; all pointer types
+            (let ([offset (local-offset id lenv)])
+              (seq (Sep (Imm8 #x20))
+                   (Lda (Stk (+ 2 offset)))
+                   (Tax) ; x 8 bits
+                   (Rep (Imm8 #x20))
+                   (Lda (Stk offset))))]
+           ['byte
+            (let ([offset (local-offset id lenv)])
+              (seq (Lda (Stk offset)) ;load
+                   (And (Imm #x00FF))))]
+           ['word
+            (let ([offset (local-offset id lenv)]) (Lda (Stk offset)))]) ;load
+
+         (match (lookup-type id g-env)
+           [(cons 'const r)
+            (match r
+              ['void '()]
+              [(or 'long (list 'array _) (list 'func _ _))
+               ; all pointer types
+               (seq (Lda (Imm (symbol->label id)))
+                    (Ldx (Imm8 (string-append "<:" (symbol->label id)))))]
+              ; hopefully it puts in the 0s for us in the byte case
+              [(or 'byte 'word) (Lda (Imm (symbol->label id)))])]
+           [r
+            (match r
+              ['void '()]
+              [(or 'long (list 'array _) (list 'func _ _))
+               ; all pointer types
+               (seq (Lda (Abs (symbol->label id)))
+                    (Ldx (Abs (string-append (symbol->label id) "+2"))))]
+              ['byte (seq (Lda (Abs (symbol->label id))) (And (Imm #x00FF)))]
+              ['word (Lda (Abs (symbol->label id)))])]))]
+
     [(IntOp1 op e)
      (seq (compile-expr e lenv)
           (match op
@@ -267,6 +362,7 @@
             ['1- (Dec (Acc 1))]
             ['bit-not (Eor (Acc #xFFFF))]))]
     [(IntOp2 op e1 e2)
+     ; todo
      (match e2
        ; =============================
        ; CONSTANT FOLDING OPTIMIZATION
@@ -303,73 +399,178 @@
             (Label false)
             (compile-expr e2 lenv)
             (Label endif)))]
-    [(ArrayGet a i)
-     (case (lookup-type a arrays)
-       [(byte)
-        (seq (compile-expr i lenv)
-             (Rep (Imm8 #x10))
-             (Tax)
-             (Lda (LongX (symbol->label a)))
-             (And (Imm #x00FF))
-             (Sep (Imm8 #x10)))]
-       [(word)
-        (seq (compile-expr i lenv)
-             (Asl (Acc 1)) ; 2 bytes each
-             (Rep (Imm8 #x10))
-             (Tax)
-             (Lda (LongX (symbol->label a)))
-             (Sep (Imm8 #x10)))]
-       [(long) (error "not implemented")])]
+    [(ArrayGet a-e i)
+     (match (typeof-expr a-e (append lenv g-env))
+       [(list 'array r)
+        (match r
+          ['byte
+           (seq (compile-expr i lenv)
+                (Pha) ; push offset
+                (compile-expr a-e (cons '(#f . word) lenv))
+                ; accumulator has address of array
+                (Sta (Zp 0))
+                (Stx (Zp 2))
+                (Rep (Imm8 #x10)) ; in the future: small offsets can be 8-bit
+                (Ply) ; offset
+                (Lda (ZpIndY 0)) ; LOAD!
+                (And (Imm #x00FF))
+                (Sep (Imm8 #x10)))]
+          ['word
+           (seq (compile-expr i lenv)
+                (Asl (Acc 1)) ; 2 bytes
+                (Pha) ; push offset
+                (compile-expr a-e (cons '(#f . word) lenv))
+                ; accumulator has address of array
+                (Sta (Zp 0))
+                (Stx (Zp 2))
+                (Rep (Imm8 #x10)) ; 16-bit XY
+                (Ply) ; offset
+                (Lda (ZpIndY 0)) ; LOAD!
+                (Sep (Imm8 #x10)))]
+          [(or 'long (list 'array _) (list 'func _ _))
+           (seq (compile-expr i lenv)
+                (Sta (Zp 0))
+                (Asl (Acc 1))
+                (Clc) ; may not be necessary given above line
+                (Adc (Zp 0)) ; 3 bytes
+                (Inc (Acc 2)) ; get bank byte first
+                (Pha) ; push offset
+                (compile-expr a-e (cons '(#f . word) lenv))
+                ; accumulator has address of array
+                (Sta (Zp 0))
+                (Stx (Zp 2))
+                (Rep (Imm8 #x10)) ; 16-bit XY
+                (Ply) ; offset
+                (Lda (ZpIndY 0)) ; LOAD! (bank byte)
+                (Tax) ; X <- bank byte
+                (Dey (Acc 2)) ; offset of rest
+                (Lda (ZpIndY 0)) ; LOAD! (lower 16)
+                (Rep (Imm8 #x20))
+                (Sep (Imm8 #x10)))])]
+       [(list 'const 'array r)
+        (match r
+          ['byte
+           (seq (compile-expr i lenv)
+                (Rep (Imm8 #x10))
+                (Tax)
+                (Lda (LongX (const-var->label a-e)))
+                (And (Imm #x00FF))
+                (Sep (Imm8 #x10)))]
+          ['word
+           (seq (compile-expr i lenv)
+                (Asl (Acc 1)) ; 2 bytes
+                (Rep (Imm8 #x10))
+                (Tax)
+                (Lda (LongX (const-var->label a-e)))
+                (Sep (Imm8 #x10)))]
+          [(or 'long (list 'array _) (list 'func _ _))
+           (seq (compile-expr i lenv)
+                (Sta (Zp 0))
+                (Asl (Acc 1))
+                (Clc) ; may not be necessary given above line
+                (Adc (Zp 0)) ; 3 bytes
+                (Rep (Imm8 #x10))
+                (Tax) ; offset
+                (Lda (LongX (string-append (const-var->label a-e) "+2")))
+                (Tay)
+                (Lda (LongX (const-var->label a-e)))
+                (Tyx)
+                (Sep (Imm8 #x10)))])])
 
-    ;;
-    ))
+     ;;
+     ]))
 
 (define (compile-int int)
   (Lda (Imm int)))
 
-; calling conventions:
-; caller puts arguments on the stack
-; then calls: putting the return address at the top
-; once the call is complete, deallocate values (leave accumulator with
-; result)
 ; note to self: should also make a compile-call version when the call is a
-; statementt, because then we are safe to throw away the return value during
+; statement, because then we are safe to throw away the return value during
 ; the deallocation process
-(define (compile-call id as lenv)
-  (match-let ([(Func _ t ts _) (lookup-func id funcs)])
-    (seq ; putting arguments on the stack
-     ; if empty, for/list should yield empty list
-     (for/list ([arg as] [type (map cdr ts)]) ; cdr is type
-       (let ([code (compile-expr arg lenv)])
-         (set! lenv (cons `(#f . ,type) lenv))
-         (seq code
-              (case type
-                [(void) '()]
-                [(long) (seq (Phx) (Pha))]
-                [(byte) (seq (Tax) (Phx))]
-                [(word) (Pha)]))))
-     ; performing the function call
-     (Jsl (symbol->label id))
-     ; deallocating argument space
-     (let ([alloc-size (length-local ts)])
-       (if (empty? as)
-           '() ; no need to deallocate
-           (case t
-             [(void) (move-stack alloc-size)] ; no need to save
-             [(long)
-              (seq (Txy)
-                   (Sta (Zp 0))
-                   (move-stack alloc-size)
-                   (Tyx)
-                   (Lda (Zp 0)))]
-             [(byte)
-              (seq (Sta (Zp 0))
-                   (move-stack alloc-size)
-                   (Lda (Zp 0))
-                   (And (Imm #x00FF)))] ; zero out high byte if there is
-             ; additional stuff here (see note)
-             [(word)
-              (seq (Sta (Zp 0)) (move-stack alloc-size) (Lda (Zp 0)))]))))))
+(define (compile-call f-e as lenv)
+  ;  (println (typeof-expr f-e (append lenv g-env)))
+  (match (typeof-expr f-e (append lenv g-env))
+    [(list 'func ret args)
+     ; push args to the stack
+     (seq
+      (for/list ([a as] [t args])
+        (let ([code (compile-expr a lenv)])
+          (set! lenv (cons `(#f . ,t) lenv))
+          (seq code
+               (match t
+                 ['void '()]
+                 ; all pointer types
+                 [(or 'long (list 'array _) (list 'func _ _)) (seq (Phx) (Pha))]
+                 ['word (Pha)]
+                 ['byte (seq (Tax) (Phx))]))))
+      ; function call
+      ; need to:
+      ; -> push return address
+      ; -> resolve effective address
+      ; -> jump
+      (let ([ret (gensym ".call_ret")])
+        (seq (Phk)
+             (Per (string-append (~a ret) "-1"))
+             (compile-expr f-e (cons '(#f . long) lenv))
+             (Sta (Zp 0))
+             (Stx (Zp 2))
+             (Jml (AbsInd 0)) ; jump!
+             (Label ret)))
+      ; save return value and deallocate arguments
+      (let ([alloc-size (local-size-types-only args)])
+        (if (empty? as)
+            '() ; no need to deallocate
+            (match ret
+              ['void (move-stack alloc-size)] ; no need to save
+              [(or 'long (list 'array _) (list 'func _ _))
+               (seq (Txy)
+                    (Sta (Zp 0))
+                    (move-stack alloc-size)
+                    (Tyx)
+                    (Lda (Zp 0)))]
+              ['byte
+               (seq (Sta (Zp 0))
+                    (move-stack alloc-size)
+                    (Lda (Zp 0))
+                    (And (Imm #x00FF)))] ; zero out high byte if there is
+              ; additional stuff here (see note)
+              ['word
+               (seq (Sta (Zp 0)) (move-stack alloc-size) (Lda (Zp 0)))]))))]
+
+    [(list 'const 'func ret args)
+     ; push args to the stack
+     (seq
+      (for/list ([a as] [t args])
+        (let ([code (compile-expr a lenv)])
+          (set! lenv (cons `(#f . ,t) lenv))
+          (seq code
+               (match t
+                 ['void '()]
+                 ; all pointer types
+                 [(or 'long (list 'array _) (list 'func _ _)) (seq (Phx) (Pha))]
+                 ['word (Pha)]
+                 ['byte (seq (Tax) (Phx))]))))
+      ; function call
+      (Jsl (const-var->label f-e))
+      ; save return value and deallocate arguments
+      (let ([alloc-size (local-size-types-only args)])
+        (if (empty? as)
+            '() ; no need to deallocate
+            (match ret
+              ['void (move-stack alloc-size)] ; no need to save
+              [(or 'long (list 'array _) (list 'func _ _))
+               (seq (Txy)
+                    (Sta (Zp 0))
+                    (move-stack alloc-size)
+                    (Tyx)
+                    (Lda (Zp 0)))]
+              ['byte
+               (seq (Sta (Zp 0))
+                    (move-stack alloc-size)
+                    (Lda (Zp 0))
+                    (And (Imm #x00FF)))] ; zero out high byte if there is
+              ; additional stuff here (see note)
+              ['word
+               (seq (Sta (Zp 0)) (move-stack alloc-size) (Lda (Zp 0)))]))))]))
 
 (define (compile-pred p lenv true false)
   (match p
@@ -408,6 +609,7 @@
             [(< >=)
              (match e2
                ; CONSTANT FOLDING OPTIMIZATION
+               ; todo
                [(Int i) (seq (compile-expr e1 lenv) (Cmp (Imm i)))]
                [_
                 (seq (compile-expr e2 lenv)
@@ -418,6 +620,7 @@
             [(= !=)
              (match e2
                ; CONSTANT FOLDING OPTIMIZATION
+               ; todo
                [(Int i) (seq (compile-expr e1 lenv) (Cmp (Imm i)))]
                [_
                 (seq (compile-expr e2 lenv)
@@ -435,6 +638,8 @@
             [(< >) (Bcc true)]
             [(>= <=) (Bcs true)])
           (Brl false))]))
+
+; todo figure out the bototm
 
 (define (make-global-list globals)
   (seq (Org "$7E0010") ; hardcoded start of global area
@@ -467,18 +672,15 @@
        (Warnpc "$7FFFFF")))
 
 (define (make-enum-list progs)
-;  (foldr (lambda (tl rest)
-;           (match tl
-;             [(Enum name ids)
-;              (cons (map (lambda (id) (cons id `(enum ,name))) ids) rest)]
-;             [_ rest]))
-;         '()
-;         prog))
+  ;  (foldr (lambda (tl rest)
+  ;           (match tl
+  ;             [(Enum name ids)
+  ;              (cons (map (lambda (id) (cons id `(enum ,name))) ids) rest)]
+  ;             [_ rest]))
+  ;         '()
+  ;         prog))
 
-  (seq (Comment "enum definitions")
-
-  )
-)
+  (seq (Comment "enum definitions")))
 
 ; this is inlined for every time it is called!
 ; idea: in certain places this could be *very* optimized
@@ -490,3 +692,7 @@
 (define (symbol->label id)
   (let ([chars (list "/" "-" "." "!" "$" "%" "&" "<" "=" ">" "^" "_" "~" "@")])
     (foldr (lambda (char str) (string-replace str char "_")) (~a id) chars)))
+
+(define (const-var->label v)
+  (match v
+    [(Var id) (symbol->label id)]))

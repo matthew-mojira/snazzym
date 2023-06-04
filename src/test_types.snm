@@ -1,0 +1,23 @@
+#lang snazzym
+
+(array a (array int) 10)
+(array b int 10)
+(array c (array (array int)) 10)
+(array d (func void (byte)) 5)
+
+(global p (array int))
+
+(func (baz void ([z (array (array int))]))
+  (return ()))
+
+(func (foo void ([x (array int)] [y word]))
+  (bar)
+  (foo x y)
+  (return ()))
+
+(func (bar void ())
+  (foo b 40)
+  (local ([x byte] [y word])
+    (set! x (if-expr true x y)))
+  (array-set! p 1 0)
+  (return ()))

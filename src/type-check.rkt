@@ -4,30 +4,19 @@
 (require "ast.rkt"
          "65816.rkt"
          "types.rkt"
-         "func.rkt"
-         "global.rkt"
-         "const.rkt"
-         "array.rkt"
-         "enum.rkt")
+         "global.rkt" racket/pretty)
 
-(define globs '())
-(define funcs '())
-(define arrays '())
-(define consts '())
-(define enums '())
+(define g-env '())
 
 (define (type-check prog)
-  (set! globs (extract-globs prog))
-  (set! funcs (extract-funcs prog))
-  (set! consts (extract-consts prog))
-  (set! arrays (extract-arrays prog))
-  (set! enums (extract-enums prog))
+  (set! g-env (extract-global-env prog))
+;  (pretty-print g-env)
   (for ([p prog])
     (type-check-top-level p)))
 
 (define (type-check-top-level prog)
   (match prog
-    [(Func _ t bs ss) (type-check-stat* ss (int-or-type t) (reverse bs))]
+    [(Func _ t bs ss) (type-check-stat* ss t (reverse bs))]
     [_ #t]))
 
 (define (type-check-stat* ss type locals)
@@ -47,26 +36,40 @@
     [(Cond cs)
      (for ([c cs]) ; the underlying type of c is an If, so use above check
        (type-check-stat c type locals))]
-    [(Call id es) (type-check-call id es locals)]
-    [(Assign id e) (type-check-expr e (typeof-var-mut id locals) locals)]
+    [(Call id-e es) (type-check-call id-e es locals)]
+    [(Assign id e)
+     (let ([var-type (typeof-var id (append locals g-env))])
+       (if (constant-type? var-type)
+           (error "Type error: trying to assign to a constant")
+           (type-check-expr e var-type locals)))]
     [(or (Increment id) (Decrement id) (ZeroOut id))
-     (if (eq? (typeof-var-mut id locals) 'int)
+     (if (eq? (int-or-type (typeof-var id (append locals g-env))) 'int)
          #t
-         (error "Type error: operation not on an integer variable"))]
+         (error "Type error: operation not on an integer variable" id))]
     [(Local bs ss) (type-check-stat* ss type (append (reverse bs) locals))]
     [(While p ss)
      (type-check-pred p locals)
      (type-check-stat* ss type locals)]
-    [(ArraySet a i e)
-     (let ([t (int-or-type (lookup-type a arrays))])
-       (type-check-expr i 'int locals)
-       (type-check-expr i t locals))]
+    [(ArraySet a-e i e)
+     ; assert `a` is an array
+     ; at this point, accept `a` can be an array of any type, only care that it
+     ; is an array
+     (type-check-expr a-e '(array any) locals)
+     ; check the indexing is an integral expression
+     (type-check-expr i 'int locals)
+     ; check the type matches the array declaration
+     ; (note: not the other way around, the type of the array is assumed to
+     ; be the expected type which the expression must match)
+     (type-check-expr
+      e
+      (extract-array-type (typeof-expr a-e (append locals g-env)))
+      locals)]
     [_ #t]))
 
 (define (type-check-expr expr type locals)
   ; first, do type checking of any subexpressions
   (match expr
-    [(Call id es) (type-check-call id es locals)]
+    [(Call id-e es) (type-check-call id-e es locals)]
     [(IntOp1 _ e) (type-check-expr e 'int locals)]
     [(IntOp2 _ e1 e2)
      (type-check-expr e1 'int locals)
@@ -75,16 +78,55 @@
      (type-check-pred p locals)
      (type-check-expr e1 type locals)
      (type-check-expr e2 type locals)]
-    [(ArrayGet a ei) (type-check-expr ei 'int locals)]
+    [(ArrayGet a ei)
+     ; assert `a` is an array
+     ; at this point, accept `a` can be an array of any type, only care that it
+     ; is an array
+     (type-check-expr a '(array any) locals)
+     ; check `ei` is an integral expression (for indexing)
+     (type-check-expr ei 'int locals)]
     [_ #t])
   ; second, compare actual type of expression with expected
-  ; any: allow any type (debug)
-  (if (or (equal? type 'any) (equal? (typeof-expr expr locals) type))
+  (if (types-match? type (typeof-expr expr (append locals g-env)))
       #t
-      (error (string-append "Type mismatch: expected "
-                            (~a type)
-                            " but got "
-                            (~a (typeof-expr expr locals))))))
+      (error (string-append
+              "Type mismatch: expected "
+              (~v type)
+              " but got "
+              (~v (int-or-type (typeof-expr expr (append locals g-env))))
+              ". Expression in question:"
+              (~v expr)))))
+
+(define (types-match? exp act)
+  ; ignore if the type is const
+  ; const really matters for assignment/compiler optimization
+  (let ([act (extract-const act)])
+    (match exp
+      ['any #t]
+      [(or 'byte 'word 'int)
+       (case act
+         [(byte word int) #t]
+         [else #f])]
+      ['long
+       (match act
+         ; okay here, will cast to const long (underlying pointer)
+         [(list 'array _) #t]
+         [(cons 'func _) #t]
+         ['long #t]
+         [_ #f])]
+      [(list 'array t)
+       (match act
+         [(list 'array ta) (types-match? t ta)]
+         [_ #f])]
+      [(list 'func re pe)
+       (match act
+         [(list 'func ra pa) (and (types-match? re ra) (types-match? pe pa))]
+         [_ #f])]
+      [(cons t ts)
+       (match act
+         [(cons a as) (and (types-match? t a) (types-match? ts as))]
+         [_ #f])]
+      [exp (equal? exp act)])))
 
 (define (type-check-pred pred locals)
   (match pred
@@ -98,51 +140,17 @@
      (type-check-expr e2 'int locals)]
     [_ #t]))
 
-(define (typeof-expr expr locals)
-  (match expr
-    [(Int _) 'int]
-    [(IntOp1 _ _) 'int]
-    [(IntOp2 _ _ _) 'int]
-    [(Call id es)
-     (match-let ([(Func _ t _ _) (lookup-func id funcs)]) (int-or-type t))]
-    [(Var id) (int-or-type (typeof-var id locals))]
-    [(Void) 'void]
-    [(Ternary _ e _) (typeof-expr e locals)]
-    ; assumption: both types of ternary operator are the same! (checked above)
-    [(ArrayGet id _) (int-or-type (lookup-type id arrays))]))
-; type dont change with index
-
-; PLEASE REDO THIS WHEN REWRITING TYPE SYSTEM
 (define (type-check-call id es locals)
-  (match (lookup-func id funcs)
-    [(Func _ _ as ss)
-     (if (= (length as) (length es))
-         (for ([a as] [e es])
-           (let ([t (int-or-type (cdr a))]) (type-check-expr e t locals)))
-         (error "Arity mismatch: expected" (length as) "but got" (length es)))]
-    [_ (error "Unrecognized function:" id)]))
-
-(define (typeof-var id locals)
-  (let ([raw (cond
-               [(lookup-type id locals)]
-               [(lookup-type id globs)]
-               [(lookup-type id consts)]
-               [(lookup-type id enums)]
-               [else (error "Unrecognized identifier:" id)])])
-    (case raw
-      [(byte word int) 'int]
-      [else raw])))
-
-(define (typeof-var-mut id locals)
-  (let ([raw (cond
-               [(lookup-type id locals)]
-               [(lookup-type id globs)]
-               [else (error "Unrecognized identifier:" id)])])
-    (case raw
-      [(byte word int) 'int]
-      [else raw])))
+  (type-check-expr id '(func any any) locals)
+  (let ([t-args (extract-func-arg-types
+                 (typeof-expr id (append locals g-env)))])
+    (if (= (length t-args) (length es))
+        (for ([a t-args] [e es])
+          (type-check-expr e a locals))
+        (error "Arity mismatch"))))
 
 (define (int-or-type t)
-  (case t
-    [(word byte) 'int]
-    [else t]))
+  (match t
+    [(or 'byte 'word) 'int]
+    [(cons t ts) (cons (int-or-type t) (int-or-type ts))]
+    [_ t]))

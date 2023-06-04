@@ -1,5 +1,7 @@
 #lang racket
 
+(require "ast.rkt")
+
 (provide (all-defined-out))
 
 (define/match (type->size type)
@@ -7,7 +9,9 @@
   [('byte) 1]
   [('void) 0]
   [('ret) 3] ; return address, should never be definable in a program
-  [('long) 3])
+  [('long) 3]
+  [((list 'array _)) 3]
+  [((list 'func _ _)) 3])
 ; need enum stuff here
 
 (define (lookup-type id vars)
@@ -50,9 +54,57 @@
 ; kinds should not work
 
 ; each name should be cons'd with the type, so like:
-; '(x (array byte))
+; '(x . byte)
 ; or
-; '(f (func void byte byte byte))
-; Note: as a list of lists there will be no RHS parentheses but that's okay
+; '(x array byte)
+; or
+; '(f func void (byte byte byte))
 
 ; Thought: Should we parse types as well?
+
+;; DEPENDENT TYPES ARE LISTS! NON-DEPENDENT TYPES ARE NOT LISTS
+
+(define (typeof-expr expr env)
+  (match expr
+    ; this const stuff is actually not needed at all for the type checker
+    [(Int _) '(const word)]
+    [(IntOp1 _ e) (typeof-expr e env)]
+    [(IntOp2 _ e1 e2)
+     (match* ((typeof-expr e1 env) (typeof-expr e2 env))
+       [('(const word) '(const word)) '(const word)]
+       [(_ _) 'word])]
+    ; will this always lookup a function successfully?
+    ; i.e. same problem as below
+    [(Call id es) (extract-func-ret-type (typeof-expr id env))]
+    [(Var id) (typeof-var id env)]
+    [(Void) 'void]
+    ; assumption: both types of ternary operator are the same! (checked above)
+    [(Ternary _ e _) (typeof-expr e env)]
+    ; do we know that this lookup always succeeds? in other words, do we know
+    ; that `id` refers to an array always?
+    ; (if the types are correct yes, but do we know that yet here?)
+    [(ArrayGet id _) (extract-array-type (typeof-expr id env))]))
+
+(define (typeof-var id env)
+  (lookup-type id env))
+
+(define (constant-type? type)
+  (match type
+    [(cons 'const _) #t]
+    [_ #f]))
+
+; cadr for ret type: (func void ()) |-cdr-> (void ()) |-car-> void
+(define (extract-func-ret-type type)
+  (cadr (extract-const type)))
+
+(define (extract-func-arg-types type)
+  (caddr (extract-const type)))
+
+(define (extract-array-type type)
+  (cadr (extract-const type)))
+
+(define (extract-const type)
+  (match type
+    [(list 'const t) t]
+    [(cons 'const t) t]
+    [_ type]))

@@ -40,10 +40,11 @@
     [(list-rest 'native as) (Native as)]
     [(list-rest 'cond cs)
      (Cond (map (match-lambda
-                  [(list p ss) (If (parse-pred p) (parse-stat* ss))])
+                  [(cons p ss) (If (parse-pred p) (parse-stat* ss))])
                 cs))]
-    [(list 'array-set! id ei ev) (ArraySet id (parse-expr ei) (parse-expr ev))]
-    [(cons id es) (Call id (map parse-expr es))]))
+    [(list 'array-set! id ei ev)
+     (ArraySet (parse-expr id) (parse-expr ei) (parse-expr ev))]
+    [(cons id es) (Call (parse-expr id) (map parse-expr es))]))
 
 (define (parse-expr expr)
   (match expr
@@ -54,9 +55,8 @@
      (IntOp2 p2 (parse-expr e1) (parse-expr e2))]
     [(list 'if-expr p e1 e2)
      (Ternary (parse-pred p) (parse-expr e1) (parse-expr e2))]
-    [(list 'array-get a ei) (ArrayGet a (parse-expr ei))]
-    [(list-rest 'call id es) (CallIndirect id (map parse-expr es))]
-    [(cons id es) (Call id (map parse-expr es))]
+    [(list 'array-get a ei) (ArrayGet (parse-expr a) (parse-expr ei))]
+    [(cons id es) (Call (parse-expr id) (map parse-expr es))]
     [(? symbol? expr) (Var expr)]))
 
 (define (parse-pred pred)

@@ -43,6 +43,14 @@
   - declare with `(struct name ([id1 t1] [id2 t2] ... [idn tn]))`
   - can declare global variables and arrays only (Idea: if it can fit in the
     registers, it can be a local type, hence no arrays as parameters)
+* Union types
+  - useful in the case where there are multiple gamemodes, each requiring its
+    own global area, but the global area between these game modes are mutually
+    exclusive (saves allocation space)
+  - declare how?
+  - need to figure out more details. likely if it's going to be for game mode
+    space optimization it will really be one huge union for all the global
+    variables in a game mode
 * Error handling function
   - errors should be when `BRK` instruction occurs, use extra byte for error
     info?
@@ -52,6 +60,11 @@
     is that second byte if we include it
   - should we be able to return from an error? where? would need a kind of
     try/catch statement
+* Add hardware registers as identifiers that can be stored/read directly
+  without native blocks
+  - think about the goals of the language, and whether or not this should be
+    even possible, or if it is forced to only native code
+* signed integers and comparison
 
 ## Optimizations
 
