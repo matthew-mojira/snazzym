@@ -11,7 +11,8 @@
   [('ret) 3] ; return address, should never be definable in a program
   [('long) 3]
   [((list 'array _)) 3]
-  [((list 'func _ _)) 3])
+  [((list 'func _ _)) 3]
+  [((list 'enum _)) 3])
 ; need enum stuff here
 
 (define (lookup-type id vars)

@@ -16,6 +16,7 @@
        (make-include-list progs)
        (make-array-list progs)
        (Pullpc)
+       (make-enum-list progs)
        (flatten (map compile-top-level progs))))
 
 ; todo make this make-func-list instead like the above!
@@ -113,7 +114,7 @@
                    (seq (Sep (Imm8 #x20))
                         (Sta (Stk offset)) ; store
                         (Rep (Imm8 #x20))))]
-                ['word
+                [(or 'word (list 'enum _))
                  (let ([offset (local-offset id lenv)]) (Sta (Stk offset)))])
 
               (match (lookup-type id g-env)
@@ -123,7 +124,7 @@
                  (seq (Sta (Abs (symbol->label id)))
                       (Stx (Abs (string-append (symbol->label id) "+2"))))]
                 ['byte (seq (Tax) (Stx (Abs (symbol->label id))))]
-                ['word (Sta (Abs (symbol->label id)))])))]
+                [(or 'word (list 'enum _)) (Sta (Abs (symbol->label id)))])))]
 
     [(Increment id)
      (if (lookup-type id lenv)
@@ -224,7 +225,7 @@
                 (Sta (ZpIndY 0)) ; STORE!
                 (Rep (Imm8 #x20))
                 (Sep (Imm8 #x10)))]
-          ['word
+          [(or 'word (list 'enum _))
            (seq (compile-expr i lenv)
                 (Asl (Acc 1)) ; 2 bytes
                 (Pha) ; push offset
@@ -278,7 +279,7 @@
                 (Sta (LongX (const-var->label a-e)))
                 (Rep (Imm8 #x20))
                 (Sep (Imm8 #x10)))]
-          ['word
+          [(or 'word (list 'enum _))
            (seq (compile-expr i lenv)
                 (Asl (Acc 1)) ; 2 bytes
                 (Pha) ; push offset
@@ -330,7 +331,7 @@
             (let ([offset (local-offset id lenv)])
               (seq (Lda (Stk offset)) ;load
                    (And (Imm #x00FF))))]
-           ['word
+           [(or 'word (list 'enum _))
             (let ([offset (local-offset id lenv)]) (Lda (Stk offset)))]) ;load
 
          (match (lookup-type id g-env)
@@ -342,7 +343,13 @@
                (seq (Lda (Imm (symbol->label id)))
                     (Ldx (Imm8 (string-append "<:" (symbol->label id)))))]
               ; hopefully it puts in the 0s for us in the byte case
-              [(or 'byte 'word) (Lda (Imm (symbol->label id)))])]
+              [(or 'byte 'word) (Lda (Imm (symbol->label id)))]
+              [(list 'enum name)
+               ; make into its own helper function?
+               (Lda (Imm (string-append "!"
+                                        (symbol->label name)
+                                        "_"
+                                        (symbol->label id))))])]
            [r
             (match r
               ['void '()]
@@ -351,7 +358,7 @@
                (seq (Lda (Abs (symbol->label id)))
                     (Ldx (Abs (string-append (symbol->label id) "+2"))))]
               ['byte (seq (Lda (Abs (symbol->label id))) (And (Imm #x00FF)))]
-              ['word (Lda (Abs (symbol->label id)))])]))]
+              [(or 'word (list 'enum _)) (Lda (Abs (symbol->label id)))])]))]
 
     [(IntOp1 op e)
      (seq (compile-expr e lenv)
@@ -415,7 +422,7 @@
                 (Lda (ZpIndY 0)) ; LOAD!
                 (And (Imm #x00FF))
                 (Sep (Imm8 #x10)))]
-          ['word
+          [(or 'word (list 'enum _))
            (seq (compile-expr i lenv)
                 (Asl (Acc 1)) ; 2 bytes
                 (Pha) ; push offset
@@ -456,7 +463,7 @@
                 (Lda (LongX (const-var->label a-e)))
                 (And (Imm #x00FF))
                 (Sep (Imm8 #x10)))]
-          ['word
+          [(or 'word (list 'enum _))
            (seq (compile-expr i lenv)
                 (Asl (Acc 1)) ; 2 bytes
                 (Rep (Imm8 #x10))
@@ -475,10 +482,9 @@
                 (Tay)
                 (Lda (LongX (const-var->label a-e)))
                 (Tyx)
-                (Sep (Imm8 #x10)))])])
-
-     ;;
-     ]))
+                (Sep (Imm8 #x10)))])])]
+    ;;
+    ))
 
 (define (compile-int int)
   (Lda (Imm int)))
@@ -487,8 +493,7 @@
 ; statement, because then we are safe to throw away the return value during
 ; the deallocation process
 (define (compile-call f-e as lenv)
-  ;  (println (typeof-expr f-e (append lenv g-env)))
-  (match (typeof-expr f-e (append lenv g-env))
+  (match (extract-const (typeof-expr f-e (append lenv g-env)))
     [(list 'func ret args)
      ; push args to the stack
      (seq
@@ -500,21 +505,23 @@
                  ['void '()]
                  ; all pointer types
                  [(or 'long (list 'array _) (list 'func _ _)) (seq (Phx) (Pha))]
-                 ['word (Pha)]
+                 [(or 'word (list 'enum _)) (Pha)]
                  ['byte (seq (Tax) (Phx))]))))
       ; function call
-      ; need to:
-      ; -> push return address
-      ; -> resolve effective address
-      ; -> jump
-      (let ([ret (gensym ".call_ret")])
-        (seq (Phk)
-             (Per (string-append (~a ret) "-1"))
-             (compile-expr f-e (cons '(#f . long) lenv))
-             (Sta (Zp 0))
-             (Stx (Zp 2))
-             (Jml (AbsInd 0)) ; jump!
-             (Label ret)))
+      (if (constant-type? (typeof-expr f-e (append lenv g-env)))
+          (Jsl (const-var->label f-e))
+          ; non-constant -- need to:
+          ; -> push return address
+          ; -> resolve effective address
+          ; -> jump
+          (let ([ret (gensym ".call_ret")])
+            (seq (Phk)
+                 (Per (string-append (~a ret) "-1"))
+                 (compile-expr f-e (cons '(#f . long) lenv))
+                 (Sta (Zp 0))
+                 (Stx (Zp 2))
+                 (Jml (AbsInd 0)) ; jump!
+                 (Label ret))))
       ; save return value and deallocate arguments
       (let ([alloc-size (local-size-types-only args)])
         (if (empty? as)
@@ -533,43 +540,7 @@
                     (Lda (Zp 0))
                     (And (Imm #x00FF)))] ; zero out high byte if there is
               ; additional stuff here (see note)
-              ['word
-               (seq (Sta (Zp 0)) (move-stack alloc-size) (Lda (Zp 0)))]))))]
-
-    [(list 'const 'func ret args)
-     ; push args to the stack
-     (seq
-      (for/list ([a as] [t args])
-        (let ([code (compile-expr a lenv)])
-          (set! lenv (cons `(#f . ,t) lenv))
-          (seq code
-               (match t
-                 ['void '()]
-                 ; all pointer types
-                 [(or 'long (list 'array _) (list 'func _ _)) (seq (Phx) (Pha))]
-                 ['word (Pha)]
-                 ['byte (seq (Tax) (Phx))]))))
-      ; function call
-      (Jsl (const-var->label f-e))
-      ; save return value and deallocate arguments
-      (let ([alloc-size (local-size-types-only args)])
-        (if (empty? as)
-            '() ; no need to deallocate
-            (match ret
-              ['void (move-stack alloc-size)] ; no need to save
-              [(or 'long (list 'array _) (list 'func _ _))
-               (seq (Txy)
-                    (Sta (Zp 0))
-                    (move-stack alloc-size)
-                    (Tyx)
-                    (Lda (Zp 0)))]
-              ['byte
-               (seq (Sta (Zp 0))
-                    (move-stack alloc-size)
-                    (Lda (Zp 0))
-                    (And (Imm #x00FF)))] ; zero out high byte if there is
-              ; additional stuff here (see note)
-              ['word
+              [(or 'word (list 'enum _))
                (seq (Sta (Zp 0)) (move-stack alloc-size) (Lda (Zp 0)))]))))]))
 
 (define (compile-pred p lenv true false)
@@ -680,7 +651,18 @@
   ;         '()
   ;         prog))
 
-  (seq (Comment "enum definitions")))
+  (seq (Comment "enum definitions")
+       (flatten
+        (map (match-lambda
+               [(Enum name ids)
+                (let ([offset -2])
+                  (for/list ([id ids])
+                    (set! offset (+ offset 2))
+                    (DefnAsm
+                     (string-append (symbol->label name) "_" (symbol->label id))
+                     offset)))]
+               [_ '()])
+             progs))))
 
 ; this is inlined for every time it is called!
 ; idea: in certain places this could be *very* optimized

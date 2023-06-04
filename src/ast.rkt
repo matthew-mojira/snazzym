@@ -38,6 +38,7 @@
 ; | Include file
 ; | Array id type length
 ; | Enum name ids
+; | Const name type val
 (struct Int    (i)       #:prefab)
 (struct Call   (id es)   #:prefab)
 (struct Var    (id)      #:prefab)
@@ -77,6 +78,7 @@
 (struct Include (id file)   #:prefab)
 (struct Array (id t l)      #:prefab)
 (struct Enum (n ids)        #:prefab)
+(struct Const (n t v)       #:prefab)
 
 (define bool-op1 '(not))
 (define bool-op2 '(and or))
