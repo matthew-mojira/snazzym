@@ -68,7 +68,8 @@
      (BoolOp2 op (parse-pred p1) (parse-pred p2))]
     [(list (? (op? comp-op1) op) e) (CompOp1 op (parse-expr e))]
     [(list (? (op? comp-op2) op) e1 e2)
-     (CompOp2 op (parse-expr e1) (parse-expr e2))]))
+     (CompOp2 op (parse-expr e1) (parse-expr e2))]
+    [(list 'enum-eq? e1 e2) (EnumEq (parse-expr e1) (parse-expr e2))]))
 
 ; a function call can be either a statement or an expression.
 ; in the future, it might make sense to make all expressions also be statements

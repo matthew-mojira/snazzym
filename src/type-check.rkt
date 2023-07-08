@@ -42,7 +42,7 @@
      (let ([var-type (typeof-var id (append locals g-env))])
        (if (constant-type? var-type)
            (error "Type error: trying to assign to a constant")
-           (type-check-expr e var-type locals)))]
+           (type-check-expr e (int-or-type (extract-const var-type)) locals)))]
     [(or (Increment id) (Decrement id) (ZeroOut id))
      (if (eq? (int-or-type (typeof-var id (append locals g-env))) 'int)
          #t
@@ -88,7 +88,8 @@
      (type-check-expr ei 'int locals)]
     [_ #t])
   ; second, compare actual type of expression with expected
-  (if (types-match? type (typeof-expr expr (append locals g-env)))
+  (if (types-match? (int-or-type type)
+                    (extract-const (typeof-expr expr (append locals g-env))))
       #t
       (error (string-append "Type mismatch: expected "
                             (~v type)
@@ -100,61 +101,59 @@
 (define (types-match? exp act)
   ; ignore if the type is const
   ; const really matters for assignment/compiler optimization
-  (let ([act (extract-const act)])
-    (match exp
-      ['any #t]
-      [(or 'byte 'word 'int)
-       (case act
-         [(byte word int) #t]
-         [else #f])]
-      ['long
-       (match act
-         ; okay here, will cast to const long (underlying pointer)
-         [(list 'array _) #t]
-         [(cons 'func _) #t]
-         ['long #t]
-         [_ #f])]
-      [(list 'array t)
-       (match act
-         [(list 'array ta) (types-match-strict-int? t ta)]
-         [_ #f])]
-      [(list 'func re pe)
-       (match act
-         [(list 'func ra pa)
-          (and (types-match-strict-int? re ra) (types-match-strict-int? pe pa))]
-         [_ #f])]
-      [(cons t ts)
-       (match act
-         [(cons a as) (and (types-match? t a) (types-match? ts as))]
-         [_ #f])]
-      [exp (equal? exp act)])))
+  (match exp
+    ['any #t]
+    ['int
+     (case act
+       [(byte word int) #t]
+       [else #f])]
+    ['long
+     (match act
+       ; okay here, will cast to const long (underlying pointer)
+       [(list 'array _) #t]
+       [(cons 'func _) #t]
+       ['long #t]
+       [_ #f])]
+    [(list 'array t)
+     (match act
+       [(list 'array ta) (types-match? t ta)]
+       [_ #f])]
+    [(list 'func re pe)
+     (match act
+       [(list 'func ra pa) (and (types-match? re ra) (types-match? pe pa))]
+       [_ #f])]
+    [(cons t ts)
+     (match act
+       [(cons a as) (and (types-match? t a) (types-match? ts as))]
+       [_ #f])]
+    [exp (equal? exp act)]))
 
-; used for array/func types where byte/word must match
-(define (types-match-strict-int? exp act)
-  (let ([act (extract-const act)])
-    (match exp
-      ['any #t]
-      ['long
-       (match act
-         ; okay here, will cast to const long (underlying pointer)
-         [(list 'array _) #t]
-         [(cons 'func _) #t]
-         ['long #t]
-         [_ #f])]
-      [(list 'array t)
-       (match act
-         [(list 'array ta) (types-match-strict-int? t ta)]
-         [_ #f])]
-      [(list 'func re pe)
-       (match act
-         [(list 'func ra pa)
-          (and (types-match-strict-int? re ra) (types-match-strict-int? pe pa))]
-         [_ #f])]
-      [(cons t ts)
-       (match act
-         [(cons a as) (and (types-match? t a) (types-match? ts as))]
-         [_ #f])]
-      [exp (equal? exp act)])))
+;; used for array/func types where byte/word must match
+;(define (types-match-strict-int? exp act)
+;  (let ([act (extract-const act)])
+;    (match exp
+;      ['any #t]
+;      ['long
+;       (match act
+;         ; okay here, will cast to const long (underlying pointer)
+;         [(list 'array _) #t]
+;         [(cons 'func _) #t]
+;         ['long #t]
+;         [_ #f])]
+;      [(list 'array t)
+;       (match act
+;         [(list 'array ta) (types-match-strict-int? t ta)]
+;         [_ #f])]
+;      [(list 'func re pe)
+;       (match act
+;         [(list 'func ra pa)
+;          (and (types-match-strict-int? re ra) (types-match-strict-int? pe pa))]
+;         [_ #f])]
+;      [(cons t ts)
+;       (match act
+;         [(cons a as) (and (types-match? t a) (types-match? ts as))]
+;         [_ #f])]
+;      [exp (equal? exp act)])))
 
 (define (type-check-pred pred locals)
   (match pred
@@ -166,6 +165,13 @@
     [(CompOp2 _ e1 e2)
      (type-check-expr e1 'int locals)
      (type-check-expr e2 'int locals)]
+    [(EnumEq e1 e2)
+     ; assert first is an enum, and second matches the first
+     (type-check-expr e1 '(enum any) locals)
+     (type-check-expr e2
+                      (extract-const (typeof-expr e1 (append locals g-env)))
+                      locals)]
+
     [_ #t]))
 
 (define (type-check-call id es locals)
@@ -180,5 +186,5 @@
 (define (int-or-type t)
   (match t
     [(or 'byte 'word) 'int]
-    [(cons t ts) (cons (int-or-type t) (int-or-type ts))]
+    ;    [(cons t ts) (cons (int-or-type t) (int-or-type ts))]
     [_ t]))

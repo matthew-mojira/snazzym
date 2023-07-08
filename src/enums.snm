@@ -8,8 +8,12 @@
 
 (func (init void ())
   (foo id1)
-  (local ([y (enum test)])
-    (set! y (foo id2)))
+  (local ([y (enum test)] [z (enum test)])
+    (set! y (foo id2))
+    (if (enum-eq? z y)
+      (return ())
+    )
+  )
   (return ()))
 
 (func (main void ())

@@ -44,10 +44,10 @@
   (local ([x word])
     (set! x (bit-and (rng/get-random) #x0003))
     (cond
-      [(= x 0) ((array-set! xs 0 (1+ (array-get xs 0))))]
-      [(= x 1) ((array-set! xs 0 (1- (array-get xs 0))))]
-      [(= x 2) ((array-set! ys 0 (1+ (array-get ys 0))))]
-      [(= x 3) ((array-set! ys 0 (1- (array-get ys 0))))]))
+      [(= x 0) (array-set! xs 0 (1+ (array-get xs 0)))]
+      [(= x 1) (array-set! xs 0 (1- (array-get xs 0)))]
+      [(= x 2) (array-set! ys 0 (1+ (array-get ys 0)))]
+      [(= x 3) (array-set! ys 0 (1- (array-get ys 0)))]))
 
   (if (>= (array-get ys 0) 224)
     (array-set! ys 0 84))
@@ -62,10 +62,10 @@
   (local ([x word])
     (set! x (bit-and (rng/get-random) #x0003))
     (cond
-      [(= x 0) ((array-set! xs 0 (1+ (array-get xs 0))))]
-      [(= x 1) ((array-set! xs 0 (1- (array-get xs 0))))]
-      [(= x 2) ((array-set! ys 0 (1+ (array-get ys 0))))]
-      [(= x 3) ((array-set! ys 0 (1- (array-get ys 0))))]))
+      [(= x 0) (array-set! xs 0 (1+ (array-get xs 0)))]
+      [(= x 1) (array-set! xs 0 (1- (array-get xs 0)))]
+      [(= x 2) (array-set! ys 0 (1+ (array-get ys 0)))]
+      [(= x 3) (array-set! ys 0 (1- (array-get ys 0)))]))
 
   (if (>= (array-get ys 0) 224)
     (array-set! ys 0 84))

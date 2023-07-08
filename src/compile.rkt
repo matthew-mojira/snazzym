@@ -608,6 +608,15 @@
             [(!=) (Bne true)]
             [(< >) (Bcc true)]
             [(>= <=) (Bcs true)])
+          (Brl false))]
+    [(EnumEq e1 e2)
+     (seq (compile-expr e2 lenv)
+          (Pha)
+          (compile-expr e1 (cons `(#f . word) lenv))
+          (Sta (Zp 0))
+          (Pla)
+          (Cmp (Zp 0))
+          (Beq true)
           (Brl false))]))
 
 ; todo figure out the bototm

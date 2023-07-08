@@ -18,6 +18,7 @@
 ; | BoolOp2 op p1 p2
 ; | CompOp1 op e
 ; | CompOp2 op e1 e2
+; | EnumEq e1 e2
 ; stat =
 ; | Call id es
 ; | Return e
@@ -55,6 +56,7 @@
 (struct BoolOp2 (op p1 p2) #:prefab)
 (struct CompOp1 (op e)     #:prefab)
 (struct CompOp2 (op e1 e2) #:prefab)
+(struct EnumEq (e1 e2) #:prefab)
 
 (struct Return (e)       #:prefab)
 (struct If     (p ss)    #:prefab)

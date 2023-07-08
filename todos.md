@@ -2,26 +2,6 @@
 
 ## New features
 
-* Dependent types (function/array types)
-  - Should be able to declare array types like `[x (array byte)]`, note no
-    information about the length of the array (note: this is a pointer to
-    the array!! it would be a mess to pass around the actual array!!)
-  - Function types can be something like `[f (func byte (word long))]`
-  - need to be fully type checked everywhere
-  - what happens to type `long`?
-* Function pointers
-  - functions are constants and so should be able to be stored into variables
-    of functional type
-  - need this for the below item
-* Dynamic function calls
-  - looks like `(call f arg1 arg2 ... argn)`
-  - may not need `call`, just transform all calls to be dynamic, and use
-    constant folding optimization
-  - need to be able to get the type of `f` here, makes things easy
-* Dynamic array accesses
-  - like the above except for `array-get` and `array-set!`
-  - use constant folding in the case the first argument is already an array,
-    and not a local variable/shadowed thing
 * Constant tables
 * constants
   - top level declaration, substitution made when? (an early substitution may

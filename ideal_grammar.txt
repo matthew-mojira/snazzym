@@ -12,3 +12,5 @@ func main: void (x: byte, y: long) do
   return ()
 
 
+; the behavior of a language keyword used as an identifier is unkown,
+; unchecked, and undefined

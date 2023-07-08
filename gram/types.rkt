@@ -1,0 +1,8 @@
+#lang brag
+
+type: VOID
+  | BYTE
+  | WORD
+  | LONG
+  | /LEFT-PAREN ARRAY type /RIGHT-PAREN
+  | /LEFT-PAREN FUNC type /LEFT-PAREN type* /RIGHT-PAREN /RIGHT-PAREN
